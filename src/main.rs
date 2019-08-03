@@ -33,6 +33,16 @@ impl DbCommand {
             
         }
     }
+    
+    fn insert(command: String) {
+        let tokens = command.split(" ").skip(1).collect::<Vec<&str>>();
+        if let [id, username, email] = tokens[..] {
+            println!("id = {}, username = {}, and email = {}", id, username, email);
+        }
+        else {
+            println!("Invalid argument passed for insert statement");
+        }
+    }
 }
 
 enum CommandType {
@@ -72,7 +82,10 @@ fn main() {
         match handle_commands(&command.trim().to_owned()) {
             CommandType::DbCommand(cmd) => {
                 match cmd {
-                    DbCommand::Insert(ccmd) => println!("Insert Command {}", ccmd),
+                    DbCommand::Insert(ccmd) => {
+                        println!("Insert Command {}", ccmd);
+                        DbCommand::insert(ccmd);
+                    },
                     DbCommand::Update(ccmd) => println!("Update Command {}", ccmd),
                     DbCommand::Delete(ccmd) => println!("Delete Command {}", ccmd),
                     DbCommand::Unknown(ccmd) => println!("Unknown Command {}", ccmd),
