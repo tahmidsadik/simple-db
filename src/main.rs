@@ -1,16 +1,22 @@
 use std::env;
 use std::io::{stdin, stdout, Write};
 
+mod database;
+mod table;
+
+use database::Database;
+use table::Table;
+
 enum MetaCommand {
     Exit,
-    Unknown(String)
+    Unknown(String),
 }
 
 impl MetaCommand {
     fn new(command: String) -> MetaCommand {
         match command.as_ref() {
             ".exit" => MetaCommand::Exit,
-            _ => MetaCommand::Unknown(command)
+            _ => MetaCommand::Unknown(command),
         }
     }
 }
@@ -19,7 +25,8 @@ enum DbCommand {
     Insert(String),
     Delete(String),
     Update(String),
-    Unknown(String)
+    CreateTable(String),
+    Unknown(String),
 }
 
 impl DbCommand {
@@ -29,17 +36,19 @@ impl DbCommand {
             "insert" => DbCommand::Insert(command),
             "update" => DbCommand::Update(command),
             "delete" => DbCommand::Delete(command),
+            "create" => DbCommand::CreateTable(command),
             _ => DbCommand::Unknown(command),
-            
         }
     }
-    
+
     fn insert(command: String) {
         let tokens = command.split(" ").skip(1).collect::<Vec<&str>>();
         if let [id, username, email] = tokens[..] {
-            println!("id = {}, username = {}, and email = {}", id, username, email);
-        }
-        else {
+            println!(
+                "id = {}, username = {}, and email = {}",
+                id, username, email
+            );
+        } else {
             println!("Invalid argument passed for insert statement");
         }
     }
@@ -47,20 +56,20 @@ impl DbCommand {
 
 enum CommandType {
     MetaCommand(MetaCommand),
-    DbCommand(DbCommand)
+    DbCommand(DbCommand),
 }
 
 fn handle_commands(cmd: &String) -> CommandType {
     match cmd.starts_with(".") {
         true => CommandType::MetaCommand(MetaCommand::new(cmd.to_owned())),
-        false => CommandType::DbCommand(DbCommand::new(cmd.to_owned()))
+        false => CommandType::DbCommand(DbCommand::new(cmd.to_owned())),
     }
 }
 
 fn handle_meta_command(cmd: MetaCommand) {
     match cmd {
         MetaCommand::Exit => std::process::exit(0),
-        MetaCommand::Unknown(cmd) => println!("Unrecognized meta command {}", cmd)
+        MetaCommand::Unknown(cmd) => println!("Unrecognized meta command {}", cmd),
     }
 }
 
@@ -71,6 +80,8 @@ fn main() {
         println!("{}", arg);
     }
 
+    let mut db = Database::new();
+
     loop {
         print!("sqlite> ");
         stdout().flush().unwrap();
@@ -78,19 +89,27 @@ fn main() {
         stdin()
             .read_line(&mut command)
             .expect("Error while trying to read from stdin");
-            
+
         match handle_commands(&command.trim().to_owned()) {
-            CommandType::DbCommand(cmd) => {
-                match cmd {
-                    DbCommand::Insert(ccmd) => {
-                        println!("Insert Command {}", ccmd);
-                        DbCommand::insert(ccmd);
-                    },
-                    DbCommand::Update(ccmd) => println!("Update Command {}", ccmd),
-                    DbCommand::Delete(ccmd) => println!("Delete Command {}", ccmd),
-                    DbCommand::Unknown(ccmd) => println!("Unknown Command {}", ccmd),
+            CommandType::DbCommand(cmd) => match cmd {
+                DbCommand::Insert(ccmd) => {
+                    println!("Insert Command {}", ccmd);
+                    DbCommand::insert(ccmd);
                 }
-            }
+                DbCommand::Update(ccmd) => println!("Update Command {}", ccmd),
+                DbCommand::Delete(ccmd) => println!("Delete Command {}", ccmd),
+                DbCommand::CreateTable(ccmd) => {
+                    println!("Acknowledged create table command {}", ccmd);
+                    let table = Table::new(ccmd);
+                    db.tables.push(table);
+                    for table in &db.tables {
+                        for col in &table.columns {
+                            println!("Column name = {}", col.name);
+                        }
+                    }
+                }
+                DbCommand::Unknown(ccmd) => println!("Unknown Command {}", ccmd),
+            },
             CommandType::MetaCommand(cmd) => {
                 handle_meta_command(cmd);
             }
