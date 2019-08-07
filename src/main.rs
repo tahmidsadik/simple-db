@@ -94,17 +94,25 @@ fn main() {
             CommandType::DbCommand(cmd) => match cmd {
                 DbCommand::Insert(ccmd) => {
                     println!("Insert Command {}", ccmd);
+                    let tokens = ccmd.split(" ").skip(2).collect::<Vec<&str>>();
+                    let name = *tokens.first().unwrap();
+                    match db.table_exists(name.to_string()) {
+                        true => println!("Table exists"),
+                        false => println!("Table doesn't exist"),
+                    }
                     DbCommand::insert(ccmd);
                 }
                 DbCommand::Update(ccmd) => println!("Update Command {}", ccmd),
                 DbCommand::Delete(ccmd) => println!("Delete Command {}", ccmd),
                 DbCommand::CreateTable(ccmd) => {
                     println!("Acknowledged create table command {}", ccmd);
-                    let table = Table::new(ccmd);
-                    db.tables.push(table);
+                    db.tables.push(Table::new(ccmd));
                     for table in &db.tables {
                         for col in &table.columns {
-                            println!("Column name = {}", col.name);
+                            println!(
+                                "Column name = {}, Column Datatype = {}",
+                                col.name, col.datatype
+                            );
                         }
                     }
                 }
