@@ -9,6 +9,7 @@ use table::Table;
 
 enum MetaCommand {
     Exit,
+    ListTables,
     Unknown(String),
 }
 
@@ -16,6 +17,7 @@ impl MetaCommand {
     fn new(command: String) -> MetaCommand {
         match command.as_ref() {
             ".exit" => MetaCommand::Exit,
+            ".tables" => MetaCommand::ListTables,
             _ => MetaCommand::Unknown(command),
         }
     }
@@ -66,9 +68,16 @@ fn handle_commands(cmd: &String) -> CommandType {
     }
 }
 
-fn handle_meta_command(cmd: MetaCommand) {
+fn handle_meta_command(cmd: MetaCommand, db: &Database) {
     match cmd {
         MetaCommand::Exit => std::process::exit(0),
+        MetaCommand::ListTables => {
+            for table in &db.tables {
+                for column in &table.columns {
+                    println!("Column Name {}, Columns Type {}", column.name, column.datatype);
+                }
+            }
+        },
         MetaCommand::Unknown(cmd) => println!("Unrecognized meta command {}", cmd),
     }
 }
@@ -119,7 +128,7 @@ fn main() {
                 DbCommand::Unknown(ccmd) => println!("Unknown Command {}", ccmd),
             },
             CommandType::MetaCommand(cmd) => {
-                handle_meta_command(cmd);
+                handle_meta_command(cmd, &db);
             }
         }
         command = "".to_string();
