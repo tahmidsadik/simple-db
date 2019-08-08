@@ -1,12 +1,15 @@
 #[macro_use]
 extern crate prettytable;
+extern crate regex;
+
+mod command_parser;
+mod database;
+mod table;
 
 use std::env;
 use std::io::{stdin, stdout, Write};
 
-mod database;
-mod table;
-
+use command_parser::extract_info_from_insert_cmd;
 use database::Database;
 use table::Table;
 
@@ -76,9 +79,9 @@ fn handle_meta_command(cmd: MetaCommand, db: &Database) {
         MetaCommand::Exit => std::process::exit(0),
         MetaCommand::ListTables => {
             for table in &db.tables {
-                table.printTable();
+                table.print_table();
             }
-        },
+        }
         MetaCommand::Unknown(cmd) => println!("Unrecognized meta command {}", cmd),
     }
 }
@@ -104,18 +107,22 @@ fn main() {
             CommandType::DbCommand(cmd) => match cmd {
                 DbCommand::Insert(ccmd) => {
                     println!("Insert Command {}", ccmd);
+                    println!("Start capturing");
+                    extract_info_from_insert_cmd(ccmd.to_owned());
+
                     let tokens = ccmd.split(" ").skip(2).collect::<Vec<&str>>();
                     let name = *tokens.first().unwrap();
                     match db.table_exists(name.to_string()) {
                         true => println!("Table exists"),
                         false => println!("Table doesn't exist"),
                     }
+
                     DbCommand::insert(ccmd);
                 }
+
                 DbCommand::Update(ccmd) => println!("Update Command {}", ccmd),
                 DbCommand::Delete(ccmd) => println!("Delete Command {}", ccmd),
                 DbCommand::CreateTable(ccmd) => {
-                    println!("Acknowledged create table command {}", ccmd);
                     db.tables.push(Table::new(ccmd));
                     for table in &db.tables {
                         for col in &table.columns {

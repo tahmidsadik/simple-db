@@ -1,9 +1,8 @@
-use prettytable::{Table as PTable, Row as PTRow, Cell as PTCell};
-extern crate regex;
+use prettytable::Table as PTable;
 
 use regex::Regex;
-use std::string::String;
 use std::fmt;
+use std::string::String;
 
 pub enum DataType {
     Int,
@@ -30,7 +29,7 @@ impl fmt::Display for DataType {
             DataType::Int => f.write_str("Int"),
             DataType::Str => f.write_str("Str"),
             DataType::Float => f.write_str("Float"),
-            DataType::Invalid => f.write_str("Invalid")
+            DataType::Invalid => f.write_str("Invalid"),
         }
     }
 }
@@ -83,7 +82,7 @@ impl Table {
         }
     }
 
-    pub fn printTable(&self) {
+    pub fn print_table(&self) {
         let mut table = PTable::new();
         table.add_row(row!["Column Name", "Data Type"]);
 
@@ -93,4 +92,10 @@ impl Table {
 
         table.printstd();
     }
+
+    pub fn column_exist(&self, column: String) -> bool {
+        self.columns.iter().any(|col| col.name == column)
+    }
+
+    pub fn does_column_value_match(&self, column: String, value: String) {}
 }
