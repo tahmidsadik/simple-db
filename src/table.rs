@@ -1,4 +1,6 @@
+use prettytable::{Table as PTable, Row as PTRow, Cell as PTCell};
 extern crate regex;
+
 use regex::Regex;
 use std::string::String;
 use std::fmt;
@@ -79,5 +81,16 @@ impl Table {
             columns: table_cols,
             name: table_name.to_string(),
         }
+    }
+
+    pub fn printTable(&self) {
+        let mut table = PTable::new();
+        table.add_row(row!["Column Name", "Data Type"]);
+
+        for col in &self.columns {
+            table.add_row(row![col.name, col.datatype]);
+        }
+
+        table.printstd();
     }
 }

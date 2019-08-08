@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate prettytable;
+
 use std::env;
 use std::io::{stdin, stdout, Write};
 
@@ -73,9 +76,7 @@ fn handle_meta_command(cmd: MetaCommand, db: &Database) {
         MetaCommand::Exit => std::process::exit(0),
         MetaCommand::ListTables => {
             for table in &db.tables {
-                for column in &table.columns {
-                    println!("Column Name {}, Columns Type {}", column.name, column.datatype);
-                }
+                table.printTable();
             }
         },
         MetaCommand::Unknown(cmd) => println!("Unrecognized meta command {}", cmd),
