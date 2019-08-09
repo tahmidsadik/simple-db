@@ -1,4 +1,5 @@
 use regex::Regex;
+use std::collections::HashMap;
 
 // TODO: Sanitize input string before validation
 // TODO: input => lowercase => trim space from beginning and end  => replace \s* with just one \s
@@ -7,12 +8,20 @@ use regex::Regex;
 // TODO: => Check if the values are of the correct type for given table
 // TODO: => Finally Insert the data.
 // TODO: => This was suppoosed to be fun.
+
+pub fn sanitize_user_input(input: String) -> String {
+    let cmd = input.to_lowercase();
+    let cmd = cmd.trim();
+    let cmd = Regex::new(r"\s+").unwrap().replace_all(cmd, " ");
+    return cmd.to_string();
+}
+
 pub fn extract_info_from_insert_cmd(cmd: String) {
+    let cmd = sanitize_user_input(cmd);
+    println!("Sanitized input {}", cmd);
     let matcher =
         Regex::new(r"[a-z]*\s*[a-z]*\s*([a-z]*)\s*\(((?:.|\n)+)\)\s*[a-z]*\s*\(((?:.|\n)+)\)")
             .unwrap();
-
-    println!("regex created");
 
     let captures = matcher
         .captures(&cmd)
@@ -28,4 +37,20 @@ pub fn extract_info_from_insert_cmd(cmd: String) {
         "table_name = {}, columns = {}, values = {}",
         table_name, columns, values
     );
+}
+
+pub fn extract_info_from_create_table_cmd(cmd: String) -> HashMap<&'static str, String> {
+    let cmd = sanitize_user_input(cmd);
+
+    let captured_groups = Regex::new(r"create table ([a-z]*)\s+\(((?:.|\n)+)\)")
+        .unwrap()
+        .captures(&cmd)
+        .expect("Error while trying to validate create table command");
+
+    let table_name = captured_groups.get(1).map_or("", |m| m.as_str());
+    let columns_schema = captured_groups.get(2).map_or("", |m| m.as_str());
+    let mut hm: HashMap<&'static str, String> = HashMap::new();
+    hm.insert("tname", String::from(table_name));
+    hm.insert("columns", String::from(columns_schema));
+    return hm;
 }
