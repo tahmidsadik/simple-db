@@ -5,6 +5,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::fmt;
 
+#[derive(PartialEq, Debug)]
 pub enum DataType {
     Int,
     Str,
@@ -13,7 +14,7 @@ pub enum DataType {
 }
 
 impl DataType {
-    fn new(cmd: String) -> DataType {
+    pub fn new(cmd: String) -> DataType {
         match cmd.to_lowercase().as_ref() {
             "int" => DataType::Int,
             "string" => DataType::Str,
@@ -35,13 +36,14 @@ impl fmt::Display for DataType {
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub struct Column {
     pub name: String,
     pub datatype: DataType,
 }
 
 impl Column {
-    fn new(name: String, datatype: String) -> Column {
+    pub fn new(name: String, datatype: String) -> Column {
         Column {
             name: name,
             datatype: DataType::new(datatype),

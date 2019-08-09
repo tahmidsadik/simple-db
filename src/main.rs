@@ -147,6 +147,8 @@ fn main() {
 mod tests {
     use super::*;
     use command_parser::{extract_info_from_create_table_cmd, sanitize_user_input};
+    use table::{Column, DataType};
+
     #[test]
     fn sanitize_input_trims_single_whitespaces_correctly_from_start_and_end() {
         let input = String::from(" hello ");
@@ -193,14 +195,20 @@ mod tests {
         assert_eq!(columns_schema, expected_columns_schema);
     }
 
+    #[test]
     fn tests_creating_a_table() {
-        let command = String::from("CREATE TABLE users (id int, name string)");
+        let command =
+            String::from("CREATE TABLE users (id int, name string, bounty float, unknown unknown)");
         let table = Table::new(command);
+
+        let expected_columns = vec![
+            Column::new("id".to_string(), "int".to_string()),
+            Column::new("name".to_string(), "string".to_string()),
+            Column::new("bounty".to_string(), "float".to_string()),
+            Column::new("unknown".to_string(), "unknown".to_string()),
+        ];
         assert_eq!(table.name, "users");
-        // assert!(table
-        //     .columns
-        //     .iter()
-        //     .any(|c| c == Column::new("id", Datatype::new("int"))));
+        assert_eq!(table.columns, expected_columns);
     }
 
     #[test]
