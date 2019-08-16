@@ -1,10 +1,11 @@
-use prettytable::{Table as PTable, Row as PTRow, Cell as PTCell};
-extern crate regex;
+use prettytable::Table as PTable;
 
+use crate::command_parser::{extract_info_from_create_table_cmd, extract_info_from_insert_cmd};
 use regex::Regex;
-use std::string::String;
+use std::collections::HashMap;
 use std::fmt;
 
+#[derive(PartialEq, Debug)]
 pub enum DataType {
     Int,
     Str,
@@ -13,7 +14,7 @@ pub enum DataType {
 }
 
 impl DataType {
-    fn new(cmd: String) -> DataType {
+    pub fn new(cmd: String) -> DataType {
         match cmd.to_lowercase().as_ref() {
             "int" => DataType::Int,
             "string" => DataType::Str,
@@ -30,18 +31,19 @@ impl fmt::Display for DataType {
             DataType::Int => f.write_str("Int"),
             DataType::Str => f.write_str("Str"),
             DataType::Float => f.write_str("Float"),
-            DataType::Invalid => f.write_str("Invalid")
+            DataType::Invalid => f.write_str("Invalid"),
         }
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub struct Column {
     pub name: String,
     pub datatype: DataType,
 }
 
 impl Column {
-    fn new(name: String, datatype: String) -> Column {
+    pub fn new(name: String, datatype: String) -> Column {
         Column {
             name: name,
             datatype: DataType::new(datatype),
@@ -56,24 +58,21 @@ pub struct Table {
 
 impl Table {
     pub fn new(cmd: String) -> Table {
-        let tokens = cmd.split(" ").skip(2).collect::<Vec<&str>>();
-        let table_name = tokens.first().expect("No table name given");
+        let hm = extract_info_from_create_table_cmd(cmd);
 
-        let columns_matcher = Regex::new(r"\((.|\n)*\)").unwrap();
-        let reg_matcher_obj = columns_matcher.find(cmd.as_ref()).unwrap();
-        let columns: Vec<String> = cmd[(reg_matcher_obj.start() + 1)..(reg_matcher_obj.end() - 1)]
-            .trim()
-            .split(",")
-            .map(|x| x.clone().replace("\n", ""))
-            .collect();
+        let table_name = hm
+            .get("tname")
+            .expect("Error while trying to parse table name from insert command");
+        let columns = hm
+            .get("columns")
+            .expect("Error while trying to parse table name from insert command");
+
+        let columns: Vec<&str> = columns.split(",").collect();
 
         let mut table_cols: Vec<Column> = vec![];
         for s in columns {
             if let [name, datatype] = s.trim().split(" ").collect::<Vec<&str>>()[..] {
-                table_cols.push(Column {
-                    name: name.to_string(),
-                    datatype: DataType::new(datatype.to_string()),
-                });
+                table_cols.push(Column::new(name.to_string(), datatype.to_string()));
             };
         }
 
@@ -83,7 +82,7 @@ impl Table {
         }
     }
 
-    pub fn printTable(&self) {
+    pub fn print_table(&self) {
         let mut table = PTable::new();
         table.add_row(row!["Column Name", "Data Type"]);
 
@@ -93,4 +92,10 @@ impl Table {
 
         table.printstd();
     }
+
+    pub fn column_exist(&self, column: String) -> bool {
+        self.columns.iter().any(|col| col.name == column)
+    }
+
+    pub fn does_column_value_match(&self, _column: String, _value: String) {}
 }
