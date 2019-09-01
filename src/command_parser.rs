@@ -16,9 +16,8 @@ pub fn sanitize_user_input(input: String) -> String {
     return cmd.to_string();
 }
 
-pub fn extract_info_from_insert_cmd(cmd: String) {
+pub fn extract_info_from_insert_cmd(cmd: String) -> (String, Vec<String>, Vec<String>) {
     let cmd = sanitize_user_input(cmd);
-    println!("Sanitized input {}", cmd);
     let matcher =
         Regex::new(r"[a-z]*\s*[a-z]*\s*([a-z]*)\s*\(((?:.|\n)+)\)\s*[a-z]*\s*\(((?:.|\n)+)\)")
             .unwrap();
@@ -27,8 +26,6 @@ pub fn extract_info_from_insert_cmd(cmd: String) {
         .captures(&cmd)
         .expect("Error while trying to validate insert command");
 
-    println!("Capture complete");
-
     let table_name = captures.get(1).map_or("", |m| m.as_str());
     let columns = captures.get(2).map_or("", |m| m.as_str());
     let values = captures.get(3).map_or("", |m| m.as_str());
@@ -36,6 +33,19 @@ pub fn extract_info_from_insert_cmd(cmd: String) {
     println!(
         "table_name = {}, columns = {}, values = {}",
         table_name, columns, values
+    );
+    return (
+        table_name.to_string(),
+        columns
+            .replace(" ", "")
+            .split(",")
+            .map(|n| n.to_string())
+            .collect::<Vec<String>>(),
+        values
+            .replace(" ", "")
+            .split(",")
+            .map(|n| n.to_string())
+            .collect::<Vec<String>>(),
     );
 }
 

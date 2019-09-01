@@ -106,8 +106,6 @@ fn main() {
         match handle_commands(&command.trim().to_owned()) {
             CommandType::DbCommand(cmd) => match cmd {
                 DbCommand::Insert(ccmd) => {
-                    println!("Insert Command {}", ccmd);
-                    println!("Start capturing");
                     extract_info_from_insert_cmd(ccmd.to_owned());
 
                     let tokens = ccmd.split(" ").skip(2).collect::<Vec<&str>>();
@@ -217,6 +215,21 @@ mod tests {
         let sanitized_input = sanitize_user_input(input);
         let expected_output = String::from("hello");
         assert_eq!(sanitized_input, expected_output);
+    }
+
+    #[test]
+    fn tests_extracting_info_from_insert_cmd() {
+        let input = String::from("insert into users (id, name, age) values(1, hello, 27);");
+        let (table, columns, values) = extract_info_from_insert_cmd(input);
+        assert_eq!(table, "users");
+        assert_eq!(
+            columns,
+            vec!["id".to_string(), "name".to_string(), "age".to_string()]
+        );
+        assert_eq!(
+            values,
+            vec!["1".to_string(), "hello".to_string(), "27".to_string()]
+        );
     }
 
 }
