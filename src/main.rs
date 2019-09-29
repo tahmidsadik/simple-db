@@ -11,11 +11,13 @@ use std::io::{stdin, stdout, Write};
 
 use command_parser::extract_info_from_insert_cmd;
 use database::Database;
+use std::collections::HashMap;
 use table::Table;
 
 enum MetaCommand {
     Exit,
     ListTables,
+    PrintData,
     Unknown(String),
 }
 
@@ -24,6 +26,7 @@ impl MetaCommand {
         match command.as_ref() {
             ".exit" => MetaCommand::Exit,
             ".tables" => MetaCommand::ListTables,
+            ".data" => MetaCommand::PrintData,
             _ => MetaCommand::Unknown(command),
         }
     }
@@ -82,6 +85,11 @@ fn handle_meta_command(cmd: MetaCommand, db: &Database) {
                 table.print_table();
             }
         }
+        MetaCommand::PrintData => {
+            for table in &db.tables {
+                table.print_table_data();
+            }
+        }
         MetaCommand::Unknown(cmd) => println!("Unrecognized meta command {}", cmd),
     }
 }
@@ -106,16 +114,34 @@ fn main() {
         match handle_commands(&command.trim().to_owned()) {
             CommandType::DbCommand(cmd) => match cmd {
                 DbCommand::Insert(ccmd) => {
-                    extract_info_from_insert_cmd(ccmd.to_owned());
+                    let (table, columns, values) = extract_info_from_insert_cmd(ccmd.to_owned());
 
-                    let tokens = ccmd.split(" ").skip(2).collect::<Vec<&str>>();
-                    let name = *tokens.first().unwrap();
-                    match db.table_exists(name.to_string()) {
-                        true => println!("Table exists"),
+                    // TODO: we need to find the correct table not just take the first one.
+
+                    match db.table_exists(table.to_string()) {
+                        true => {
+                            println!("Table exists");
+
+                            let cols = columns.clone();
+                            // let vals = values.clone();
+                            let tt = db.tables.first().unwrap();
+
+                            match columns.into_iter().all(|c| tt.column_exist(c)) {
+                                true => {
+                                    println!("all columns exist");
+                                    println!("let's insert");
+                                    let hm: HashMap<String, String> = HashMap::from(
+                                        cols.into_iter().zip(values.into_iter()).collect(),
+                                    );
+                                    db.tables.first_mut().unwrap().insert_row(hm);
+                                }
+                                false => {
+                                    println!("Cannot insert, some of the columns do not exist");
+                                }
+                            }
+                        }
                         false => println!("Table doesn't exist"),
                     }
-
-                    DbCommand::insert(ccmd);
                 }
 
                 DbCommand::Update(ccmd) => println!("Update Command {}", ccmd),
@@ -231,5 +257,4 @@ mod tests {
             vec!["1".to_string(), "hello".to_string(), "27".to_string()]
         );
     }
-
 }
