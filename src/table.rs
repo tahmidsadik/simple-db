@@ -1,7 +1,6 @@
 use prettytable::{Cell, Row, Table as PTable};
 
-use crate::command_parser::{extract_info_from_create_table_cmd, extract_info_from_insert_cmd};
-use regex::Regex;
+use crate::command_parser::extract_info_from_create_table_cmd;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -71,7 +70,7 @@ impl RowValue {
 pub struct Table {
     pub columns: Vec<Column>,
     pub name: String,
-    pub rows: HashMap<String, Vec<String>>,
+    pub rows: Vec<Vec<String>>,
 }
 
 impl Table {
@@ -88,51 +87,30 @@ impl Table {
         let columns: Vec<&str> = columns.split(",").collect();
 
         let mut table_cols: Vec<Column> = vec![];
-        let mut table_rows = HashMap::new();
         for s in columns {
             if let [name, datatype] = s.trim().split(" ").collect::<Vec<&str>>()[..] {
                 table_cols.push(Column::new(name.to_string(), datatype.to_string()));
-                table_rows.insert(name.to_string(), vec![]);
-                // match DataType::new(datatype.to_string()) {
-                //     DataType::Int => {
-                //         table_rows.insert(name.to_string(), vec![]);
-                //     }
-                //     DataType::Str => {
-                //
-                //     }
-                //     DataType::Float => {
-                //
-                //     }
-                //     DataType::Double => {
-                //
-                //     }
-                //     DataType::Invalid => {
-                //
-                //     }
-                //
-                // };
             };
         }
 
         Table {
             columns: table_cols,
             name: table_name.to_string(),
-            rows: table_rows,
+            rows: vec![],
         }
     }
 
-    pub fn insert_row(&mut self, rows: HashMap<String, String>) {
-        for (k, v) in rows {
-            println!("key = {}, val ={}", k, v);
-            let val = self.rows.get_mut(&k).unwrap();
-            val.push(v);
+    pub fn insert_row(&mut self, cols: Vec<String>, values: Vec<String>) {
+        let mut sorted_values: Vec<String> = vec![];
+        for column in &self.columns {
+            let idx = cols
+                .iter()
+                .position(|c| c.to_string() == column.name)
+                .unwrap();
+            sorted_values.push(values[idx].to_string());
         }
 
-        for (k, v) in &self.rows {
-            for i in v {
-                println!("{}", i);
-            }
-        }
+        self.rows.push(sorted_values);
     }
 
     pub fn print_table(&self) {
@@ -154,27 +132,12 @@ impl Table {
             .map(|col| Cell::new(&col.name))
             .collect::<Vec<Cell>>();
 
-        let cnames = self
-            .columns
-            .iter()
-            .map(|col| col.name.to_string())
-            .collect::<Vec<String>>();
-
-        let num_rows = self
-            .rows
-            .get(&self.columns.first().unwrap().name)
-            .unwrap()
-            .len();
         table.add_row(Row::new(column_names));
-
-        for i in 0..num_rows {
-            let mut row: Vec<Cell> = vec![];
-            for cname in &cnames {
-                let v = self.rows.get(cname).unwrap();
-                row.push(Cell::new(&v[i]));
-            }
-            table.add_row(Row::new(row));
+        for row in &self.rows {
+            let trow = row.iter().map(|r| Cell::new(r)).collect::<Vec<Cell>>();
+            table.add_row(Row::new(trow));
         }
+
         table.printstd();
     }
 

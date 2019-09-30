@@ -122,18 +122,13 @@ fn main() {
                         true => {
                             println!("Table exists");
 
-                            let cols = columns.clone();
-                            // let vals = values.clone();
                             let tt = db.tables.first().unwrap();
 
-                            match columns.into_iter().all(|c| tt.column_exist(c)) {
+                            match columns.iter().all(|c| tt.column_exist(c.to_string())) {
                                 true => {
                                     println!("all columns exist");
                                     println!("let's insert");
-                                    let hm: HashMap<String, String> = HashMap::from(
-                                        cols.into_iter().zip(values.into_iter()).collect(),
-                                    );
-                                    db.tables.first_mut().unwrap().insert_row(hm);
+                                    db.tables.first_mut().unwrap().insert_row(columns, values);
                                 }
                                 false => {
                                     println!("Cannot insert, some of the columns do not exist");
