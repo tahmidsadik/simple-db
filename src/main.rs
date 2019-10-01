@@ -2,16 +2,15 @@
 extern crate prettytable;
 extern crate regex;
 
-mod command_parser;
+pub mod command_parser;
 mod database;
-mod table;
+pub mod table;
 
 use std::env;
 use std::io::{stdin, stdout, Write};
 
 use command_parser::extract_info_from_insert_cmd;
 use database::Database;
-use std::collections::HashMap;
 use table::Table;
 
 enum MetaCommand {
@@ -49,18 +48,6 @@ impl DbCommand {
             "delete" => DbCommand::Delete(command),
             "create" => DbCommand::CreateTable(command),
             _ => DbCommand::Unknown(command),
-        }
-    }
-
-    fn insert(command: String) {
-        let tokens = command.split(" ").skip(1).collect::<Vec<&str>>();
-        if let [id, username, email] = tokens[..] {
-            println!(
-                "id = {}, username = {}, and email = {}",
-                id, username, email
-            );
-        } else {
-            println!("Invalid argument passed for insert statement");
         }
     }
 }
@@ -165,78 +152,6 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use command_parser::{extract_info_from_create_table_cmd, sanitize_user_input};
-    use table::{Column, DataType};
-
-    #[test]
-    fn sanitize_input_trims_single_whitespaces_correctly_from_start_and_end() {
-        let input = String::from(" hello ");
-        let sanitized_input = sanitize_user_input(input);
-        let expected_output = String::from("hello");
-        assert_eq!(sanitized_input, expected_output);
-    }
-
-    #[test]
-    fn sanitize_input_trims_multiple_whitespaces_correctly_from_start_and_end() {
-        let input = String::from("         hello         ");
-        let sanitized_input = sanitize_user_input(input);
-        let expected_output = String::from("hello");
-        assert_eq!(sanitized_input, expected_output);
-    }
-
-    #[test]
-    fn sanitize_input_lowercases_the_input() {
-        let input = String::from("HELLO WORLD GoodBye World");
-        let sanitized_input = sanitize_user_input(input);
-        let expected_output = String::from("hello world goodbye world");
-        assert_eq!(sanitized_input, expected_output);
-    }
-
-    #[test]
-    fn sanitize_input_replaces_multiple_whitespaces_into_single_one_inside_string() {
-        // should turn "hello     world       end" => "hello world end"
-        let input = String::from("hello       world        end");
-        let sanitized_input = sanitize_user_input(input);
-        let expected_output = String::from("hello world end");
-        assert_eq!(sanitized_input, expected_output);
-    }
-
-    #[test]
-    fn parses_correctly_from_create_table_cmd() {
-        let input = String::from("CREATE TABLE users (id int, name string)");
-        let parsed_cmd_hm = extract_info_from_create_table_cmd(input);
-        let table_name = String::from(parsed_cmd_hm.get("tname").unwrap());
-        let columns_schema = String::from(parsed_cmd_hm.get("columns").unwrap());
-
-        let expected_table_name = String::from("users");
-        let expected_columns_schema = String::from("id int, name string");
-        assert_eq!(table_name, expected_table_name);
-        assert_eq!(columns_schema, expected_columns_schema);
-    }
-
-    #[test]
-    fn tests_creating_a_table() {
-        let command =
-            String::from("CREATE TABLE users (id int, name string, bounty float, unknown unknown)");
-        let table = Table::new(command);
-
-        let expected_columns = vec![
-            Column::new("id".to_string(), "int".to_string()),
-            Column::new("name".to_string(), "string".to_string()),
-            Column::new("bounty".to_string(), "float".to_string()),
-            Column::new("unknown".to_string(), "unknown".to_string()),
-        ];
-        assert_eq!(table.name, "users");
-        assert_eq!(table.columns, expected_columns);
-    }
-
-    #[test]
-    fn sanitize_input_trims_whitespaces_correctly() {
-        let input = String::from(" hello ");
-        let sanitized_input = sanitize_user_input(input);
-        let expected_output = String::from("hello");
-        assert_eq!(sanitized_input, expected_output);
-    }
 
     #[test]
     fn tests_extracting_info_from_insert_cmd() {

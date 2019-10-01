@@ -1,8 +1,8 @@
 use prettytable::{Cell, Row, Table as PTable};
-
-use crate::command_parser::extract_info_from_create_table_cmd;
-use std::collections::HashMap;
 use std::fmt;
+
+use crate::command_parser;
+use command_parser::extract_info_from_create_table_cmd;
 
 #[derive(PartialEq, Debug)]
 pub enum DataType {
@@ -146,4 +146,25 @@ impl Table {
     }
 
     pub fn does_column_value_match(&self, _column: String, _value: String) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tests_creating_a_table() {
+        let command =
+            String::from("CREATE TABLE users (id int, name string, bounty float, unknown unknown)");
+        let table = Table::new(command);
+
+        let expected_columns = vec![
+            Column::new("id".to_string(), "int".to_string()),
+            Column::new("name".to_string(), "string".to_string()),
+            Column::new("bounty".to_string(), "float".to_string()),
+            Column::new("unknown".to_string(), "unknown".to_string()),
+        ];
+        assert_eq!(table.name, "users");
+        assert_eq!(table.columns, expected_columns);
+    }
 }

@@ -64,3 +64,54 @@ pub fn extract_info_from_create_table_cmd(cmd: String) -> HashMap<&'static str, 
     hm.insert("columns", String::from(columns_schema));
     return hm;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_input_trims_single_whitespaces_correctly_from_start_and_end() {
+        let input = String::from(" hello ");
+        let sanitized_input = sanitize_user_input(input);
+        let expected_output = String::from("hello");
+        assert_eq!(sanitized_input, expected_output);
+    }
+
+    #[test]
+    fn sanitize_input_trims_multiple_whitespaces_correctly_from_start_and_end() {
+        let input = String::from("         hello         ");
+        let sanitized_input = sanitize_user_input(input);
+        let expected_output = String::from("hello");
+        assert_eq!(sanitized_input, expected_output);
+    }
+
+    #[test]
+    fn sanitize_input_lowercases_the_input() {
+        let input = String::from("HELLO WORLD GoodBye World");
+        let sanitized_input = sanitize_user_input(input);
+        let expected_output = String::from("hello world goodbye world");
+        assert_eq!(sanitized_input, expected_output);
+    }
+
+    #[test]
+    fn sanitize_input_replaces_multiple_whitespaces_into_single_one_inside_string() {
+        // should turn "hello     world       end" => "hello world end"
+        let input = String::from("hello       world        end");
+        let sanitized_input = sanitize_user_input(input);
+        let expected_output = String::from("hello world end");
+        assert_eq!(sanitized_input, expected_output);
+    }
+
+    #[test]
+    fn parses_correctly_from_create_table_cmd() {
+        let input = String::from("CREATE TABLE users (id int, name string)");
+        let parsed_cmd_hm = extract_info_from_create_table_cmd(input);
+        let table_name = String::from(parsed_cmd_hm.get("tname").unwrap());
+        let columns_schema = String::from(parsed_cmd_hm.get("columns").unwrap());
+
+        let expected_table_name = String::from("users");
+        let expected_columns_schema = String::from("id int, name string");
+        assert_eq!(table_name, expected_table_name);
+        assert_eq!(columns_schema, expected_columns_schema);
+    }
+}
