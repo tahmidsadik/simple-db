@@ -9,6 +9,7 @@ pub mod table;
 use std::env;
 use std::fs::File;
 use std::io::prelude::Write;
+use std::io::BufWriter;
 use std::io::Read;
 use std::io::{stdin, stdout};
 
@@ -85,22 +86,20 @@ fn handle_meta_command(cmd: MetaCommand, db: &mut Database) {
             }
         }
         MetaCommand::Persist => {
-            let encoded = bincode::serialize(&db).unwrap();
-            let mut file = File::create("dbfile1").unwrap();
-            file.write_all(&encoded);
+            println!("Db length before encoding = {}", db.tables.len());
+            let mut buffered_writer = BufWriter::new(File::create("dbfile1.bin").unwrap());
+            bincode::serialize_into(&mut buffered_writer, &db);
         }
         MetaCommand::Restore => {
-            let mut file = File::open("dbfile1").unwrap();
-            let mut contents = String::new();
-            file.read_to_string(&mut contents).unwrap();
-            println!("{}", contents);
-            let encoded = contents.as_bytes();
-            println!("{:?}", encoded);
-            let mut decoded_db: Database = bincode::deserialize(&encoded[..]).unwrap();
-            println!("db tables length = {}", db.tables.len());
+            let mut file = File::open("dbfile1.bin").unwrap();
+            // let mut buffer = Vec::<u8>::new();
+            // file.read_to_end(&mut buffer).unwrap();
+            // let mut decoded_db: Database = bincode::deserialize(&buffer[..]).unwrap();
+            let decoded_db: Database = bincode::deserialize_from(&mut file).unwrap();
+            println!("db tables length = {}", decoded_db.tables.len());
             // db.tables[0].print_table();
             // db.tables[0].print_table_data();
-            // db = &decoded_db;
+            *db = decoded_db;
         }
         MetaCommand::Unknown(cmd) => println!("Unrecognized meta command {}", cmd),
     }
