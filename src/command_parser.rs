@@ -52,7 +52,7 @@ pub fn extract_info_from_insert_cmd(cmd: String) -> (String, Vec<String>, Vec<St
 pub fn extract_info_from_create_table_cmd(cmd: String) -> HashMap<&'static str, String> {
     let cmd = sanitize_user_input(cmd);
 
-    let captured_groups = Regex::new(r"create table ([a-z]*)\s+\(((?:.|\n)+)\)")
+    let captured_groups = Regex::new(r"create table ([a-z]*)\s*\(((?:.|\n)+)\)")
         .unwrap()
         .captures(&cmd)
         .expect("Error while trying to validate create table command");
@@ -111,6 +111,18 @@ mod tests {
 
         let expected_table_name = String::from("users");
         let expected_columns_schema = String::from("id int, name string");
+        assert_eq!(table_name, expected_table_name);
+        assert_eq!(columns_schema, expected_columns_schema);
+    }
+    #[test]
+    fn parses_correctly_from_create_table_cmd_no_whitespace() {
+        let input = String::from("CREATE TABLE users(id int,name string)");
+        let parsed_cmd_hm = extract_info_from_create_table_cmd(input);
+        let table_name = String::from(parsed_cmd_hm.get("tname").unwrap());
+        let columns_schema = String::from(parsed_cmd_hm.get("columns").unwrap());
+
+        let expected_table_name = String::from("users");
+        let expected_columns_schema = String::from("id int,name string");
         assert_eq!(table_name, expected_table_name);
         assert_eq!(columns_schema, expected_columns_schema);
     }
