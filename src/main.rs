@@ -7,7 +7,10 @@ mod database;
 pub mod table;
 
 use std::env;
-use std::io::{stdin, stdout, Write};
+use std::fs::File;
+use std::io::prelude::Write;
+use std::io::Read;
+use std::io::{stdin, stdout};
 
 use command_parser::extract_info_from_insert_cmd;
 use database::Database;
@@ -17,6 +20,8 @@ enum MetaCommand {
     Exit,
     ListTables,
     PrintData,
+    Persist,
+    Restore,
     Unknown(String),
 }
 
@@ -26,6 +31,8 @@ impl MetaCommand {
             ".exit" => MetaCommand::Exit,
             ".tables" => MetaCommand::ListTables,
             ".data" => MetaCommand::PrintData,
+            ".persist" => MetaCommand::Persist,
+            ".restore" => MetaCommand::Restore,
             _ => MetaCommand::Unknown(command),
         }
     }
@@ -64,7 +71,7 @@ fn handle_commands(cmd: &String) -> CommandType {
     }
 }
 
-fn handle_meta_command(cmd: MetaCommand, db: &Database) {
+fn handle_meta_command(cmd: MetaCommand, db: &mut Database) {
     match cmd {
         MetaCommand::Exit => std::process::exit(0),
         MetaCommand::ListTables => {
@@ -76,6 +83,24 @@ fn handle_meta_command(cmd: MetaCommand, db: &Database) {
             for table in &db.tables {
                 table.print_table_data();
             }
+        }
+        MetaCommand::Persist => {
+            let encoded = bincode::serialize(&db).unwrap();
+            let mut file = File::create("dbfile1").unwrap();
+            file.write_all(&encoded);
+        }
+        MetaCommand::Restore => {
+            let mut file = File::open("dbfile1").unwrap();
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).unwrap();
+            println!("{}", contents);
+            let encoded = contents.as_bytes();
+            println!("{:?}", encoded);
+            let mut decoded_db: Database = bincode::deserialize(&encoded[..]).unwrap();
+            println!("db tables length = {}", db.tables.len());
+            // db.tables[0].print_table();
+            // db.tables[0].print_table_data();
+            // db = &decoded_db;
         }
         MetaCommand::Unknown(cmd) => println!("Unrecognized meta command {}", cmd),
     }
@@ -142,7 +167,7 @@ fn main() {
                 DbCommand::Unknown(ccmd) => println!("Unknown Command {}", ccmd),
             },
             CommandType::MetaCommand(cmd) => {
-                handle_meta_command(cmd, &db);
+                handle_meta_command(cmd, &mut db);
             }
         }
         command = "".to_string();

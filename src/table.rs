@@ -1,10 +1,11 @@
 use prettytable::{Cell, Row, Table as PTable};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::command_parser;
 use command_parser::extract_info_from_create_table_cmd;
 
-#[derive(PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum DataType {
     Int,
     Str,
@@ -35,7 +36,7 @@ impl fmt::Display for DataType {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Column {
     pub name: String,
     pub datatype: DataType,
@@ -67,6 +68,7 @@ impl RowValue {
     }
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Table {
     pub columns: Vec<Column>,
     pub name: String,
