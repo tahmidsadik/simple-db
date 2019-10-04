@@ -43,6 +43,8 @@ pub fn extract_info_from_insert_cmd(cmd: String) -> (String, Vec<String>, Vec<St
             .collect::<Vec<String>>(),
         values
             .replace(" ", "")
+            .replace("\"", "")
+            .replace("'", "")
             .split(",")
             .map(|n| n.to_string())
             .collect::<Vec<String>>(),

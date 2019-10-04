@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn tests_extracting_info_from_insert_cmd() {
-        let input = String::from("insert into users (id, name, age) values(1, hello, 27);");
+        let input = String::from("insert into users (id, name, age) values(1, 'hello', 27);");
         let (table, columns, values) = extract_info_from_insert_cmd(input);
         assert_eq!(table, "users");
         assert_eq!(
