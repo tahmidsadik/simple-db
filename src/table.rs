@@ -37,40 +37,35 @@ impl fmt::Display for DataType {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct Column {
+pub struct Column<T> {
     pub name: String,
     pub datatype: DataType,
+    pub data: Vec<T>,
 }
 
-impl Column {
-    pub fn new(name: String, datatype: String) -> Column {
+impl<T> Column<T> {
+    pub fn new(name: String, datatype: String, data: Vec<T>) -> Column<T> {
         Column {
             name: name,
             datatype: DataType::new(datatype),
-        }
-    }
-}
-
-pub enum RowValue {
-    Int(i32),
-    Str(String),
-    Float(f32),
-}
-
-impl RowValue {
-    pub fn new(valtype: DataType, val: String) -> RowValue {
-        match valtype {
-            DataType::Int => RowValue::Int(val.parse::<i32>().unwrap()),
-            DataType::Str => RowValue::Str(val),
-            DataType::Float => RowValue::Float(val.parse::<f32>().unwrap()),
-            DataType::Invalid => RowValue::Str(val),
+            data,
         }
     }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
+pub enum ColumnType {
+    I32(Column<i32>),
+    I64(Column<i64>),
+    Float(Column<f32>),
+    Double(Column<f64>),
+    ColumnString(Column<String>),
+    Bool(Column<bool>),
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Table {
-    pub columns: Vec<Column>,
+    pub columns: Vec<ColumnType>,
     pub name: String,
     pub rows: Vec<Vec<String>>,
 }
@@ -88,10 +83,42 @@ impl Table {
 
         let columns: Vec<&str> = columns.split(",").collect();
 
-        let mut table_cols: Vec<Column> = vec![];
+        let mut table_cols: Vec<ColumnType> = vec![];
         for s in columns {
             if let [name, datatype] = s.trim().split(" ").collect::<Vec<&str>>()[..] {
-                table_cols.push(Column::new(name.to_string(), datatype.to_string()));
+                match datatype {
+                    "int" => table_cols.push(ColumnType::I32(Column::new(
+                        name.to_string(),
+                        datatype.to_string(),
+                        vec![],
+                    ))),
+                    "int64" => table_cols.push(ColumnType::I64(Column::new(
+                        name.to_string(),
+                        datatype.to_string(),
+                        vec![],
+                    ))),
+                    "float" => table_cols.push(ColumnType::Float(Column::new(
+                        name.to_string(),
+                        datatype.to_string(),
+                        vec![],
+                    ))),
+                    "double" => table_cols.push(ColumnType::Double(Column::new(
+                        name.to_string(),
+                        datatype.to_string(),
+                        vec![],
+                    ))),
+                    "string" => table_cols.push(ColumnType::ColumnString(Column::new(
+                        name.to_string(),
+                        datatype.to_string(),
+                        vec![],
+                    ))),
+                    "bool" => table_cols.push(ColumnType::Bool(Column::new(
+                        name.to_string(),
+                        datatype.to_string(),
+                        vec![],
+                    ))),
+                    _ => panic!("Invalid datatype, {} ", datatype),
+                }
             };
         }
 
@@ -104,12 +131,34 @@ impl Table {
 
     pub fn insert_row(&mut self, cols: Vec<String>, values: Vec<String>) {
         let mut sorted_values: Vec<String> = vec![];
+
         for column in &self.columns {
-            let idx = cols
-                .iter()
-                .position(|c| c.to_string() == column.name)
-                .unwrap();
-            sorted_values.push(values[idx].to_string());
+            match column {
+                ColumnType::I32(col) => {
+                    let idx = cols.iter().position(|c| c.to_string() == col.name).unwrap();
+                    sorted_values.push(values[idx].to_string());
+                }
+                ColumnType::I64(col) => {
+                    let idx = cols.iter().position(|c| c.to_string() == col.name).unwrap();
+                    sorted_values.push(values[idx].to_string());
+                }
+                ColumnType::Float(col) => {
+                    let idx = cols.iter().position(|c| c.to_string() == col.name).unwrap();
+                    sorted_values.push(values[idx].to_string());
+                }
+                ColumnType::Double(col) => {
+                    let idx = cols.iter().position(|c| c.to_string() == col.name).unwrap();
+                    sorted_values.push(values[idx].to_string());
+                }
+                ColumnType::ColumnString(col) => {
+                    let idx = cols.iter().position(|c| c.to_string() == col.name).unwrap();
+                    sorted_values.push(values[idx].to_string());
+                }
+                ColumnType::Bool(col) => {
+                    let idx = cols.iter().position(|c| c.to_string() == col.name).unwrap();
+                    sorted_values.push(values[idx].to_string());
+                }
+            }
         }
 
         self.rows.push(sorted_values);
@@ -119,8 +168,27 @@ impl Table {
         let mut table = PTable::new();
         table.add_row(row!["Column Name", "Data Type"]);
 
-        for col in &self.columns {
-            table.add_row(row![col.name, col.datatype]);
+        for column in &self.columns {
+            match column {
+                ColumnType::I32(col) => {
+                    table.add_row(row![col.name, col.datatype]);
+                }
+                ColumnType::I64(col) => {
+                    table.add_row(row![col.name, col.datatype]);
+                }
+                ColumnType::Float(col) => {
+                    table.add_row(row![col.name, col.datatype]);
+                }
+                ColumnType::Double(col) => {
+                    table.add_row(row![col.name, col.datatype]);
+                }
+                ColumnType::ColumnString(col) => {
+                    table.add_row(row![col.name, col.datatype]);
+                }
+                ColumnType::Bool(col) => {
+                    table.add_row(row![col.name, col.datatype]);
+                }
+            }
         }
 
         table.printstd();
@@ -131,7 +199,14 @@ impl Table {
         let column_names = self
             .columns
             .iter()
-            .map(|col| Cell::new(&col.name))
+            .map(|col| match col {
+                ColumnType::I32(col) => Cell::new(&col.name),
+                ColumnType::I64(col) => Cell::new(&col.name),
+                ColumnType::Float(col) => Cell::new(&col.name),
+                ColumnType::Double(col) => Cell::new(&col.name),
+                ColumnType::ColumnString(col) => Cell::new(&col.name),
+                ColumnType::Bool(col) => Cell::new(&col.name),
+            })
             .collect::<Vec<Cell>>();
 
         table.add_row(Row::new(column_names));
@@ -144,7 +219,14 @@ impl Table {
     }
 
     pub fn column_exist(&self, column: String) -> bool {
-        self.columns.iter().any(|col| col.name == column)
+        self.columns.iter().any(|col| match col {
+            ColumnType::I32(col) => col.name == column,
+            ColumnType::I64(col) => col.name == column,
+            ColumnType::Float(col) => col.name == column,
+            ColumnType::Double(col) => col.name == column,
+            ColumnType::ColumnString(col) => col.name == column,
+            ColumnType::Bool(col) => col.name == column,
+        })
     }
 
     pub fn does_column_value_match(&self, _column: String, _value: String) {}
@@ -157,15 +239,21 @@ mod tests {
 
     #[test]
     fn tests_creating_a_table() {
-        let command =
-            String::from("CREATE TABLE users (id int, name string, bounty float, unknown unknown)");
+        let command = String::from("CREATE TABLE users (id int, name string, bounty float)");
         let table = Table::new(command);
 
         let expected_columns = vec![
-            Column::new("id".to_string(), "int".to_string()),
-            Column::new("name".to_string(), "string".to_string()),
-            Column::new("bounty".to_string(), "float".to_string()),
-            Column::new("unknown".to_string(), "unknown".to_string()),
+            ColumnType::I32(Column::new("id".to_string(), "int".to_string(), vec![])),
+            ColumnType::ColumnString(Column::new(
+                "name".to_string(),
+                "string".to_string(),
+                vec![],
+            )),
+            ColumnType::Float(Column::new(
+                "bounty".to_string(),
+                "float".to_string(),
+                vec![],
+            )),
         ];
         assert_eq!(table.name, "users");
         assert_eq!(table.columns, expected_columns);

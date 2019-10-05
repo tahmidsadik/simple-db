@@ -156,14 +156,6 @@ fn main() {
                 DbCommand::Delete(ccmd) => println!("Delete Command {}", ccmd),
                 DbCommand::CreateTable(ccmd) => {
                     db.tables.push(Table::new(ccmd));
-                    for table in &db.tables {
-                        for col in &table.columns {
-                            println!(
-                                "Column name = {}, Column Datatype = {}",
-                                col.name, col.datatype
-                            );
-                        }
-                    }
                 }
                 DbCommand::Unknown(ccmd) => println!("Unknown Command {}", ccmd),
             },
