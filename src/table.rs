@@ -153,6 +153,7 @@ impl Table {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use command_parser::extract_info_from_insert_cmd;
 
     #[test]
     fn tests_creating_a_table() {
@@ -169,4 +170,21 @@ mod tests {
         assert_eq!(table.name, "users");
         assert_eq!(table.columns, expected_columns);
     }
+
+    // #[bench]
+    // fn benches_insert(b: &mut test::Bencher) {
+    //     let command =
+    //         String::from("CREATE TABLE users (id int, name string, phone_number string, address string, gender string)");
+    //     let mut table = Table::new(command);
+
+    //     b.iter(|| {
+
+    //         for i in 1..2 {
+    //             let x = format!("INSERT INTO users (id, name, phone_number, address, gender) values ({}, 'tahmid', '01770169762', 'House 32, Road 1, Blcok C Banasree', 'male');", i);
+    //             let (_table_name, columns, values) = extract_info_from_insert_cmd(x);
+    //             table.insert_row(columns, values);
+    //         }
+    //     });
+    //     // table.print_table_data();
+    // }
 }

@@ -1,3 +1,6 @@
+// #![feature(test)]
+// extern crate test;
+
 #[macro_use]
 extern crate prettytable;
 extern crate regex;
@@ -10,7 +13,6 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::Write;
 use std::io::BufWriter;
-use std::io::Read;
 use std::io::{stdin, stdout};
 
 use command_parser::extract_info_from_insert_cmd;
