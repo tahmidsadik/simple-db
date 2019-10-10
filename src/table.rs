@@ -2,7 +2,6 @@ use prettytable::{Cell, Row, Table as PTable};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
-use std::iter::FromIterator;
 
 use crate::command_parser;
 use command_parser::extract_info_from_create_table_cmd;
@@ -173,8 +172,6 @@ impl Table {
             .map(|col| col.name.to_string())
             .collect::<Vec<String>>();
 
-        let mut len = 0;
-
         let first_col_data = self.rows.get(&self.columns.first().unwrap().name).unwrap();
 
         let num_rows = match first_col_data {
@@ -203,20 +200,6 @@ impl Table {
             table.add_row(Row::new(row));
         }
         table.printstd();
-        // let mut table = PTable::new();
-        // let column_names = self
-        //     .columns
-        //     .iter()
-        //     .map(|col| Cell::new(&col.name))
-        //     .collect::<Vec<Cell>>();
-
-        // table.add_row(Row::new(column_names));
-        // for row in &self.rows {
-        //     let trow = row.iter().map(|r| Cell::new(r)).collect::<Vec<Cell>>();
-        //     table.add_row(Row::new(trow));
-        // }
-
-        // table.printstd();
     }
 
     pub fn column_exist(&self, column: String) -> bool {
@@ -230,7 +213,6 @@ impl Table {
 mod tests {
     use super::*;
     use command_parser::extract_info_from_insert_cmd;
-
     #[test]
     fn tests_creating_a_table() {
         let command =
@@ -247,20 +229,17 @@ mod tests {
         assert_eq!(table.columns, expected_columns);
     }
 
-    // #[bench]
-    // fn benches_insert(b: &mut test::Bencher) {
-    //     let command =
-    //         String::from("CREATE TABLE users (id int, name string, phone_number string, address string, gender string)");
-    //     let mut table = Table::new(command);
+    #[bench]
+    fn benches_insert(b: &mut test::Bencher) {
+        let command =
+            String::from("CREATE TABLE users (id int, name string, phone_number string, address string, gender string)");
+        let mut table = Table::new(command);
 
-    //     b.iter(|| {
-
-    //         for i in 1..2 {
-    //             let x = format!("INSERT INTO users (id, name, phone_number, address, gender) values ({}, 'tahmid', '01770169762', 'House 32, Road 1, Blcok C Banasree', 'male');", i);
-    //             let (_table_name, columns, values) = extract_info_from_insert_cmd(x);
-    //             table.insert_row(columns, values);
-    //         }
-    //     });
-    //     // table.print_table_data();
-    // }
+        b.iter(|| {
+            let x = format!("INSERT INTO users (id, name, phone_number, address, gender) values (1, 'tahmid', '01770169762', 'House 32, Road 1, Blcok C Banasree', 'male');");
+            let (_table_name, columns, values) = extract_info_from_insert_cmd(x);
+            table.insert_row(columns, values);
+        });
+        table.print_table_data();
+    }
 }

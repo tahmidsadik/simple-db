@@ -1,5 +1,5 @@
-// #![feature(test)]
-// extern crate test;
+#![feature(test)]
+extern crate test;
 
 #[macro_use]
 extern crate prettytable;
@@ -135,7 +135,12 @@ fn main() {
                         true => {
                             println!("Table exists");
 
-                            let tt = db.tables.first().unwrap();
+                            let filterd_tables = db
+                                .tables
+                                .iter()
+                                .filter(|t| t.name == table.to_string())
+                                .collect::<Vec<&Table>>();
+                            let tt = filterd_tables.first().unwrap();
 
                             match columns.iter().all(|c| tt.column_exist(c.to_string())) {
                                 true => {
