@@ -55,18 +55,6 @@ impl ColumnHeader {
     }
 }
 
-// impl FromIterator for ColumnHeader {
-//     fn from_iter<I: IntoIterator<Item=ColumnHeader>>(iter: I) -> Self {
-//         let mut c = ColumnHeader::new(iter.);
-
-//         for i in iter {
-//             c.add(i);
-//         }
-
-//         c
-//     }
-// }
-
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum ColumnData {
     Int(Vec<i32>),
@@ -120,17 +108,6 @@ impl Table {
             rows: table_data,
         }
     }
-
-    // pub fn get_column_datatype(&self, col_name: String) -> DataType {
-    //     let column = self
-    //         .columns
-    //         .iter()
-    //         .filter(|&c| c.name == col_name)
-    //         .collect::<Vec<&ColumnHeader>>()
-    //         .first()
-    //         .unwrap();
-    //     column.datatype
-    // }
 
     pub fn insert_row(&mut self, cols: Vec<String>, values: Vec<String>) {
         for i in 0..cols.len() {
