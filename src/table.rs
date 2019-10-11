@@ -121,17 +121,20 @@ impl Table {
         }
     }
 
-    pub fn insert_row(&mut self, cols: Vec<String>, values: Vec<String>) {
+    pub fn insert_row(&mut self, cols: Vec<String>, values: Vec<Vec<String>>) {
         for i in 0..cols.len() {
             let key = &cols[i];
-            let val = &values[i];
             let table_col_data = self.rows.get_mut(&key.to_string()).unwrap();
-            match table_col_data {
-                ColumnData::Int(c_vec) => c_vec.push(val.parse::<i32>().unwrap()),
-                ColumnData::Float(c_vec) => c_vec.push(val.parse::<f32>().unwrap()),
-                ColumnData::Bool(c_vec) => c_vec.push(val.parse::<bool>().unwrap()),
-                ColumnData::Str(c_vec) => c_vec.push(val.to_string()),
-                ColumnData::None => panic!("None data Found"),
+
+            for value in &values {
+                let val = &value[i];
+                match table_col_data {
+                    ColumnData::Int(c_vec) => c_vec.push(val.parse::<i32>().unwrap()),
+                    ColumnData::Float(c_vec) => c_vec.push(val.parse::<f32>().unwrap()),
+                    ColumnData::Bool(c_vec) => c_vec.push(val.parse::<bool>().unwrap()),
+                    ColumnData::Str(c_vec) => c_vec.push(val.to_string()),
+                    ColumnData::None => panic!("None data Found"),
+                }
             }
         }
     }

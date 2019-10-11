@@ -144,8 +144,6 @@ fn main() {
 
                             match columns.iter().all(|c| tt.column_exist(c.to_string())) {
                                 true => {
-                                    println!("all columns exist");
-                                    println!("let's insert");
                                     db.tables.first_mut().unwrap().insert_row(columns, values);
                                 }
                                 false => {
@@ -169,25 +167,5 @@ fn main() {
             }
         }
         command = "".to_string();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn tests_extracting_info_from_insert_cmd() {
-        let input = String::from("insert into users (id, name, age) values(1, 'hello', 27);");
-        let (table, columns, values) = extract_info_from_insert_cmd(input);
-        assert_eq!(table, "users");
-        assert_eq!(
-            columns,
-            vec!["id".to_string(), "name".to_string(), "age".to_string()]
-        );
-        assert_eq!(
-            values,
-            vec!["1".to_string(), "hello".to_string(), "27".to_string()]
-        );
     }
 }
