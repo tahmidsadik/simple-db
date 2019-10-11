@@ -1,13 +1,8 @@
-#![feature(test)]
-extern crate test;
-
+//#![feature(test)]
 #[macro_use]
 extern crate prettytable;
 extern crate regex;
-
-pub mod command_parser;
-mod database;
-pub mod table;
+//extern crate test;
 
 use std::env;
 use std::fs::File;
@@ -18,6 +13,10 @@ use std::io::{stdin, stdout};
 use command_parser::extract_info_from_insert_cmd;
 use database::Database;
 use table::Table;
+
+pub mod command_parser;
+mod database;
+pub mod table;
 
 enum MetaCommand {
     Exit,
@@ -90,7 +89,8 @@ fn handle_meta_command(cmd: MetaCommand, db: &mut Database) {
         MetaCommand::Persist => {
             println!("Db length before encoding = {}", db.tables.len());
             let mut buffered_writer = BufWriter::new(File::create("dbfile1.bin").unwrap());
-            bincode::serialize_into(&mut buffered_writer, &db);
+            bincode::serialize_into(&mut buffered_writer, &db)
+                .expect("Error while trying to serialize to binary data");
         }
         MetaCommand::Restore => {
             let mut file = File::open("dbfile1.bin").unwrap();

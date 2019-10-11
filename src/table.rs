@@ -64,6 +64,18 @@ pub enum ColumnData {
     None,
 }
 
+impl ColumnData {
+    fn get_serialized_col_data(&self) -> Vec<String> {
+        match self {
+            ColumnData::Int(cd) => cd.iter().map(|v| v.to_string()).collect(),
+            ColumnData::Float(cd) => cd.iter().map(|v| v.to_string()).collect(),
+            ColumnData::Str(cd) => cd.iter().map(|v| v.to_string()).collect(),
+            ColumnData::Bool(cd) => cd.iter().map(|v| v.to_string()).collect(),
+            ColumnData::None => panic!("Found None in columns"),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Table {
     pub columns: Vec<ColumnHeader>,
@@ -113,7 +125,7 @@ impl Table {
         for i in 0..cols.len() {
             let key = &cols[i];
             let val = &values[i];
-            let mut table_col_data = self.rows.get_mut(&key.to_string()).unwrap();
+            let table_col_data = self.rows.get_mut(&key.to_string()).unwrap();
             match table_col_data {
                 ColumnData::Int(c_vec) => c_vec.push(val.parse::<i32>().unwrap()),
                 ColumnData::Float(c_vec) => c_vec.push(val.parse::<f32>().unwrap()),
@@ -136,18 +148,20 @@ impl Table {
     }
 
     pub fn print_table_data(&self) {
-        let mut table = PTable::new();
-        let column_names = self
-            .columns
-            .iter()
-            .map(|col| Cell::new(&col.name))
-            .collect::<Vec<Cell>>();
+        let mut p_table = PTable::new();
 
         let cnames = self
             .columns
             .iter()
             .map(|col| col.name.to_string())
             .collect::<Vec<String>>();
+
+        let header_row = Row::new(
+            cnames
+                .iter()
+                .map(|col| Cell::new(&col))
+                .collect::<Vec<Cell>>(),
+        );
 
         let first_col_data = self.rows.get(&self.columns.first().unwrap().name).unwrap();
 
@@ -159,24 +173,26 @@ impl Table {
             ColumnData::None => panic!("Found None data"),
         };
 
-        table.add_row(Row::new(column_names));
+        let mut print_table_rows: Vec<Row> = vec![Row::new(vec![]); num_rows];
 
-        for i in 0..num_rows {
-            let mut row: Vec<Cell> = vec![];
-            for cname in &cnames {
-                let v = self.rows.get(cname).unwrap();
+        for col_name in &cnames {
+            let col_val = self
+                .rows
+                .get(col_name)
+                .expect("Can't find any rows with the given column");
+            let columns: Vec<String> = col_val.get_serialized_col_data();
 
-                match v {
-                    ColumnData::Int(cd) => row.push(Cell::new(&cd[i].to_string())),
-                    ColumnData::Float(cd) => row.push(Cell::new(&cd[i].to_string())),
-                    ColumnData::Bool(cd) => row.push(Cell::new(&cd[i].to_string())),
-                    ColumnData::Str(cd) => row.push(Cell::new(&cd[i].to_string())),
-                    ColumnData::None => panic!("Found None data"),
-                }
+            for i in 0..num_rows {
+                print_table_rows[i].add_cell(Cell::new(&columns[i]));
             }
-            table.add_row(Row::new(row));
         }
-        table.printstd();
+
+        p_table.add_row(header_row);
+        for row in print_table_rows {
+            p_table.add_row(row);
+        }
+
+        p_table.printstd();
     }
 
     pub fn column_exist(&self, column: String) -> bool {
@@ -206,17 +222,17 @@ mod tests {
         assert_eq!(table.columns, expected_columns);
     }
 
-    #[bench]
-    fn benches_insert(b: &mut test::Bencher) {
-        let command =
-            String::from("CREATE TABLE users (id int, name string, phone_number string, address string, gender string)");
-        let mut table = Table::new(command);
-
-        b.iter(|| {
-            let x = format!("INSERT INTO users (id, name, phone_number, address, gender) values (1, 'tahmid', '01770169762', 'House 32, Road 1, Blcok C Banasree', 'male');");
-            let (_table_name, columns, values) = extract_info_from_insert_cmd(x);
-            table.insert_row(columns, values);
-        });
-        table.print_table_data();
-    }
+    //    #[bench]
+    //    fn benches_insert(b: &mut test::Bencher) {
+    //        let command =
+    //            String::from("CREATE TABLE users (id int, name string, phone_number string, address string, gender string)");
+    //        let mut table = Table::new(command);
+    //
+    //        b.iter(|| {
+    //            let x = format!("INSERT INTO users (id, name, phone_number, address, gender) values (1, 'tahmid', '01770169762', 'House 32, Road 1, Blcok C Banasree', 'male');");
+    //            let (_table_name, columns, values) = extract_info_from_insert_cmd(x);
+    //            table.insert_row(columns, values);
+    //        });
+    //        table.print_table_data();
+    //    }
 }
