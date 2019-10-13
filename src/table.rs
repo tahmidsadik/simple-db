@@ -1,5 +1,6 @@
 use prettytable::{Cell, Row, Table as PTable};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -44,13 +45,19 @@ impl fmt::Display for DataType {
 pub struct ColumnHeader {
     pub name: String,
     pub datatype: DataType,
+    pub is_indexed: bool,
+    pub index: BTreeMap<String, usize>,
+    pub is_primary_key: bool,
 }
 
 impl ColumnHeader {
-    pub fn new(name: String, datatype: String) -> ColumnHeader {
+    pub fn new(name: String, datatype: String, is_primary_key: bool) -> ColumnHeader {
         ColumnHeader {
             name: name,
             datatype: DataType::new(datatype),
+            is_indexed: if is_primary_key { true } else { false },
+            index: BTreeMap::new(),
+            is_primary_key,
         }
     }
 }
@@ -85,33 +92,24 @@ pub struct Table {
 
 impl Table {
     pub fn new(cmd: String) -> Table {
-        let hm = extract_info_from_create_table_cmd(cmd);
-
-        let table_name = hm
-            .get("tname")
-            .expect("Error while trying to parse table name from insert command");
-        let columns = hm
-            .get("columns")
-            .expect("Error while trying to parse table name from insert command");
-
-        let columns: Vec<&str> = columns.split(",").collect();
+        let (table_name, columns) = extract_info_from_create_table_cmd(cmd);
 
         let mut table_cols: Vec<ColumnHeader> = vec![];
         let mut table_data: HashMap<String, ColumnData> = HashMap::new();
-        for s in columns {
-            if let [name, datatype] = s.trim().split(" ").collect::<Vec<&str>>()[..] {
-                table_cols.push(ColumnHeader::new(name.to_string(), datatype.to_string()));
+        for c in columns {
+            table_cols.push(ColumnHeader::new(
+                c.name.to_string(),
+                c.datatype.to_string(),
+                c.is_pk,
+            ));
 
-                match DataType::new(datatype.to_string()) {
-                    DataType::Int => table_data.insert(name.to_string(), ColumnData::Int(vec![])),
-                    DataType::Float => {
-                        table_data.insert(name.to_string(), ColumnData::Float(vec![]))
-                    }
-                    DataType::Str => table_data.insert(name.to_string(), ColumnData::Str(vec![])),
-                    DataType::Bool => table_data.insert(name.to_string(), ColumnData::Bool(vec![])),
-                    DataType::Invalid => table_data.insert(name.to_string(), ColumnData::None),
-                };
-            }
+            match DataType::new(c.name.to_string()) {
+                DataType::Int => table_data.insert(c.name.to_string(), ColumnData::Int(vec![])),
+                DataType::Float => table_data.insert(c.name.to_string(), ColumnData::Float(vec![])),
+                DataType::Str => table_data.insert(c.name.to_string(), ColumnData::Str(vec![])),
+                DataType::Bool => table_data.insert(c.name.to_string(), ColumnData::Bool(vec![])),
+                DataType::Invalid => table_data.insert(c.name.to_string(), ColumnData::None),
+            };
         }
 
         Table {
@@ -215,14 +213,34 @@ mod tests {
             String::from("CREATE TABLE users (id int, name string, bounty float, unknown unknown)");
         let table = Table::new(command);
 
-        let expected_columns = vec![
-            ColumnHeader::new("id".to_string(), "int".to_string()),
-            ColumnHeader::new("name".to_string(), "string".to_string()),
-            ColumnHeader::new("bounty".to_string(), "float".to_string()),
-            ColumnHeader::new("unknown".to_string(), "unknown".to_string()),
+        let expected_column_names = vec![
+            "id".to_string(),
+            "name".to_string(),
+            "bounty".to_string(),
+            "unknown".to_string(),
         ];
+        let expected_column_types = vec![
+            "Int".to_string(),
+            "Str".to_string(),
+            "Float".to_string(),
+            "Invalid".to_string(),
+        ];
+
+        let column_names = table
+            .columns
+            .iter()
+            .map(|c| c.name.to_string())
+            .collect::<Vec<String>>();
+
+        let column_types = table
+            .columns
+            .iter()
+            .map(|c| c.datatype.to_string())
+            .collect::<Vec<String>>();
+
         assert_eq!(table.name, "users");
-        assert_eq!(table.columns, expected_columns);
+        assert_eq!(column_names, expected_column_names);
+        assert_eq!(column_types, expected_column_types);
     }
 
     //    #[bench]

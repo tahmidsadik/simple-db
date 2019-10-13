@@ -1,13 +1,12 @@
 use regex::Regex;
-use std::collections::HashMap;
-
-// TODO: Sanitize input string before validation
-// TODO: input => lowercase => trim space from beginning and end  => replace \s* with just one \s
-// TODO: => tokenize => extract table-name, columns and values => return
-// TODO: => Cehck if the table exists => check if the columns exist in that table
-// TODO: => Check if the values are of the correct type for given table
-// TODO: => Finally Insert the data.
-// TODO: => This was suppoosed to be fun.
+// TODO: add default value
+#[derive(PartialEq, Debug)]
+pub struct ParsedColumn {
+    pub name: String,
+    pub datatype: String,
+    pub is_pk: bool,
+    pub is_nullable: bool,
+}
 
 pub fn sanitize_user_input(input: String) -> String {
     let cmd = input.to_lowercase();
@@ -63,7 +62,7 @@ pub fn extract_info_from_insert_cmd(cmd: String) -> (String, Vec<String>, Vec<Ve
     );
 }
 
-pub fn extract_info_from_create_table_cmd(cmd: String) -> HashMap<&'static str, String> {
+pub fn extract_info_from_create_table_cmd(cmd: String) -> (String, Vec<ParsedColumn>) {
     let cmd = sanitize_user_input(cmd);
 
     let captured_groups = Regex::new(r"create table ([a-z]*)\s*\(((?:.|\n)+)\)")
@@ -72,11 +71,32 @@ pub fn extract_info_from_create_table_cmd(cmd: String) -> HashMap<&'static str, 
         .expect("Error while trying to validate create table command");
 
     let table_name = captured_groups.get(1).map_or("", |m| m.as_str());
-    let columns_schema = captured_groups.get(2).map_or("", |m| m.as_str());
-    let mut hm: HashMap<&'static str, String> = HashMap::new();
-    hm.insert("tname", String::from(table_name));
-    hm.insert("columns", String::from(columns_schema));
-    return hm;
+    let parsed_columns = captured_groups.get(2).map_or("", |m| m.as_str());
+
+    let splitted_columns: Vec<String> = parsed_columns
+        .split(",")
+        .map(|c| c.to_lowercase())
+        .collect();
+
+    let mut parsed_columns: Vec<ParsedColumn> = vec![];
+    for c in splitted_columns {
+        let is_pk = c.contains("primary key");
+        let is_nullable = c.contains("not null");
+
+        let c = c.replace("primary key", "");
+        let c = c.replace("not null", "");
+
+        if let [name, datatype] = c.trim().split(" ").collect::<Vec<&str>>()[..] {
+            parsed_columns.push(ParsedColumn {
+                name: name.to_string(),
+                datatype: datatype.to_string(),
+                is_pk,
+                is_nullable,
+            });
+        };
+    }
+
+    return (String::from(table_name), parsed_columns);
 }
 
 #[cfg(test)]
@@ -119,26 +139,73 @@ mod tests {
     #[test]
     fn parses_correctly_from_create_table_cmd() {
         let input = String::from("CREATE TABLE users (id int, name string)");
-        let parsed_cmd_hm = extract_info_from_create_table_cmd(input);
-        let table_name = String::from(parsed_cmd_hm.get("tname").unwrap());
-        let columns_schema = String::from(parsed_cmd_hm.get("columns").unwrap());
+        let (table_name, columns) = extract_info_from_create_table_cmd(input);
 
         let expected_table_name = String::from("users");
-        let expected_columns_schema = String::from("id int, name string");
+        let expected_columns = vec![
+            ParsedColumn {
+                name: "id".to_string(),
+                datatype: "int".to_string(),
+                is_pk: false,
+                is_nullable: false,
+            },
+            ParsedColumn {
+                name: "name".to_string(),
+                datatype: "string".to_string(),
+                is_pk: false,
+                is_nullable: false,
+            },
+        ];
         assert_eq!(table_name, expected_table_name);
-        assert_eq!(columns_schema, expected_columns_schema);
+        assert_eq!(columns, expected_columns);
     }
     #[test]
     fn parses_correctly_from_create_table_cmd_no_whitespace() {
         let input = String::from("CREATE TABLE users(id int,name string)");
-        let parsed_cmd_hm = extract_info_from_create_table_cmd(input);
-        let table_name = String::from(parsed_cmd_hm.get("tname").unwrap());
-        let columns_schema = String::from(parsed_cmd_hm.get("columns").unwrap());
+        let (table_name, columns) = extract_info_from_create_table_cmd(input);
 
         let expected_table_name = String::from("users");
-        let expected_columns_schema = String::from("id int,name string");
+        let expected_columns = vec![
+            ParsedColumn {
+                name: "id".to_string(),
+                datatype: "int".to_string(),
+                is_pk: false,
+                is_nullable: false,
+            },
+            ParsedColumn {
+                name: "name".to_string(),
+                datatype: "string".to_string(),
+                is_pk: false,
+                is_nullable: false,
+            },
+        ];
         assert_eq!(table_name, expected_table_name);
-        assert_eq!(columns_schema, expected_columns_schema);
+        assert_eq!(columns, expected_columns);
+    }
+
+    #[test]
+    fn tests_create_table_command_with_primary_key() {
+        let input = String::from("CREATE TABLE users(id int PRIMARY KEY,name string)");
+        let (table_name, columns) = extract_info_from_create_table_cmd(input);
+
+        let expected_table_name = String::from("users");
+        let expected_columns = vec![
+            ParsedColumn {
+                name: "id".to_string(),
+                datatype: "int".to_string(),
+                is_pk: true,
+                is_nullable: false,
+            },
+            ParsedColumn {
+                name: "name".to_string(),
+                datatype: "string".to_string(),
+                is_pk: false,
+                is_nullable: false,
+            },
+        ];
+
+        assert_eq!(table_name, expected_table_name);
+        assert_eq!(columns, expected_columns);
     }
 
     #[test]
