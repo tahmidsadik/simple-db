@@ -113,30 +113,22 @@ fn main() {
     for arg in args {
         println!("{}", arg);
     }
-
     let mut db = Database::new();
 
     loop {
         print!("sqlite> ");
         stdout().flush().unwrap();
-
         stdin()
             .read_line(&mut command)
             .expect("Error while trying to read from stdin");
-
         match handle_commands(&command.trim().to_owned()) {
             CommandType::DbCommand(cmd) => match cmd {
                 DbCommand::Insert(ccmd) => {
                     let (table, columns, values) = extract_info_from_insert_cmd(ccmd.to_owned());
-
-                    // TODO: we need to find the correct table not just take the first one.
-
                     match db.table_exists(table.to_string()) {
                         true => {
                             println!("Table exists");
-
                             let db_table = db.get_table_mut(table.to_string());
-
                             match columns.iter().all(|c| db_table.column_exist(c.to_string())) {
                                 true => {
                                     for value in &values {
@@ -156,7 +148,6 @@ fn main() {
                         false => println!("Table doesn't exist"),
                     }
                 }
-
                 DbCommand::Update(ccmd) => println!("Update Command {}", ccmd),
                 DbCommand::Delete(ccmd) => println!("Delete Command {}", ccmd),
                 DbCommand::CreateTable(ccmd) => {
