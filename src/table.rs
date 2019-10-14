@@ -1,8 +1,8 @@
 use prettytable::{Cell, Row, Table as PTable};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
+use std::result::Result;
 
 use crate::command_parser;
 use command_parser::extract_info_from_create_table_cmd;
@@ -24,7 +24,10 @@ impl DataType {
             "float" => DataType::Float,
             "double" => DataType::Float,
             "bool" => DataType::Bool,
-            _ => DataType::Invalid,
+            _ => {
+                println!("Invalid data type given {}", cmd);
+                return DataType::Invalid;
+            }
         }
     }
 }
@@ -60,6 +63,10 @@ impl ColumnHeader {
             is_primary_key,
         }
     }
+
+    pub fn get_mut_index(&mut self) -> &mut BTreeMap<String, usize> {
+        return &mut self.index;
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -81,6 +88,16 @@ impl ColumnData {
             ColumnData::None => panic!("Found None in columns"),
         }
     }
+
+    fn count(&self) -> usize {
+        match self {
+            ColumnData::Int(cd) => cd.len(),
+            ColumnData::Float(cd) => cd.len(),
+            ColumnData::Str(cd) => cd.len(),
+            ColumnData::Bool(cd) => cd.len(),
+            ColumnData::None => panic!("Found None in columns"),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -96,14 +113,14 @@ impl Table {
 
         let mut table_cols: Vec<ColumnHeader> = vec![];
         let mut table_data: HashMap<String, ColumnData> = HashMap::new();
-        for c in columns {
+        for c in &columns {
             table_cols.push(ColumnHeader::new(
                 c.name.to_string(),
                 c.datatype.to_string(),
                 c.is_pk,
             ));
 
-            match DataType::new(c.name.to_string()) {
+            match DataType::new(c.datatype.to_string()) {
                 DataType::Int => table_data.insert(c.name.to_string(), ColumnData::Int(vec![])),
                 DataType::Float => table_data.insert(c.name.to_string(), ColumnData::Float(vec![])),
                 DataType::Str => table_data.insert(c.name.to_string(), ColumnData::Str(vec![])),
@@ -119,12 +136,53 @@ impl Table {
         }
     }
 
-    pub fn insert_row(&mut self, cols: Vec<String>, values: Vec<Vec<String>>) {
+    pub fn does_violate_unique_constraint(
+        &self,
+        cols: &Vec<String>,
+        values: &Vec<String>,
+    ) -> Result<(), String> {
+        for c in &self.columns {
+            if c.is_primary_key {
+                let index = &c.index;
+                for (idx, name) in cols.iter().enumerate() {
+                    if *name == c.name {
+                        let val = &values[idx];
+                        match index.contains_key(val) {
+                            true => {
+                                return Err(format!(
+                                    "Error: unique constraint violation for column {}.
+                            Value {} already exists for column {}",
+                                    *name, val, *name
+                                ));
+                            }
+                            false => return Ok(()),
+                        };
+                    }
+                }
+            }
+        }
+        return Ok(());
+    }
+
+    pub fn insert_row(&mut self, cols: &Vec<String>, values: &Vec<Vec<String>>) {
         for i in 0..cols.len() {
             let key = &cols[i];
             let table_col_data = self.rows.get_mut(&key.to_string()).unwrap();
 
-            for value in &values {
+            let mut column_headers = self
+                .columns
+                .iter_mut()
+                .filter(|c| c.name == key.to_string())
+                .collect::<Vec<&mut ColumnHeader>>();
+
+            let index = column_headers
+                .first_mut()
+                .expect("Couldn't find column to insert row")
+                .get_mut_index();
+
+            for value in values {
+                // TODO: only check for unique constraint violation if unique constraint exists for
+                // the column
                 let val = &value[i];
                 match table_col_data {
                     ColumnData::Int(c_vec) => c_vec.push(val.parse::<i32>().unwrap()),
@@ -133,6 +191,7 @@ impl Table {
                     ColumnData::Str(c_vec) => c_vec.push(val.to_string()),
                     ColumnData::None => panic!("None data Found"),
                 }
+                index.insert(val.to_string(), table_col_data.count() - 1);
             }
         }
     }
@@ -243,17 +302,17 @@ mod tests {
         assert_eq!(column_types, expected_column_types);
     }
 
-    //    #[bench]
-    //    fn benches_insert(b: &mut test::Bencher) {
-    //        let command =
-    //            String::from("CREATE TABLE users (id int, name string, phone_number string, address string, gender string)");
-    //        let mut table = Table::new(command);
-    //
-    //        b.iter(|| {
-    //            let x = format!("INSERT INTO users (id, name, phone_number, address, gender) values (1, 'tahmid', '01770169762', 'House 32, Road 1, Blcok C Banasree', 'male');");
-    //            let (_table_name, columns, values) = extract_info_from_insert_cmd(x);
-    //            table.insert_row(columns, values);
-    //        });
-    //        table.print_table_data();
-    //    }
+    #[test]
+    fn tests_unique_constraint_violation_on_primary_key() {
+        let command = String::from("CREATE TABLE users (id int PRIMARY KEY, name string)");
+        let mut table = Table::new(command);
+        let cols = vec!["id".to_string(), "name".to_string()];
+        let val = vec!["1".to_string(), "tahmid".to_string()];
+        table.does_violate_unique_constraint(&cols, &val);
+        table.insert_row(&cols, &vec![val.clone()]);
+        assert_eq!(
+            table.does_violate_unique_constraint(&cols, &val).is_err(),
+            true
+        );
+    }
 }

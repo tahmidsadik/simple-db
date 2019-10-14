@@ -135,16 +135,18 @@ fn main() {
                         true => {
                             println!("Table exists");
 
-                            let filterd_tables = db
-                                .tables
-                                .iter()
-                                .filter(|t| t.name == table.to_string())
-                                .collect::<Vec<&Table>>();
-                            let tt = filterd_tables.first().unwrap();
+                            let db_table = db.get_table_mut(table.to_string());
 
-                            match columns.iter().all(|c| tt.column_exist(c.to_string())) {
+                            match columns.iter().all(|c| db_table.column_exist(c.to_string())) {
                                 true => {
-                                    db.tables.first_mut().unwrap().insert_row(columns, values);
+                                    for value in &values {
+                                        match db_table
+                                            .does_violate_unique_constraint(&columns, value)
+                                        {
+                                            Err(err) => println!("{}", err),
+                                            Ok(()) => db_table.insert_row(&columns, &values),
+                                        }
+                                    }
                                 }
                                 false => {
                                     println!("Cannot insert, some of the columns do not exist");
