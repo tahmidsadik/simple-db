@@ -1,3 +1,4 @@
+#[macro_use]
 use prettytable::{Cell, Row, Table as PTable};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
@@ -5,6 +6,7 @@ use std::fmt;
 use std::result::Result;
 
 use crate::command_parser;
+use crate::parser::select::SelectQuery;
 use command_parser::extract_info_from_create_table_cmd;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -196,6 +198,17 @@ impl Table {
         }
     }
 
+    pub fn execute_select_query(&self, sq: SelectQuery) {
+        let mut data: Vec<Vec<String>> = vec![];
+        for col in &sq.projection {
+            let row = self.rows.get(col).unwrap();
+            let column = row.get_serialized_col_data();
+            data.push(column);
+        }
+        let rotated_data = util::rotate_2d_vec(&data);
+        util::pretty_print(&rotated_data, sq.projection);
+    }
+
     pub fn print_table(&self) {
         let mut table = PTable::new();
         table.add_row(row!["Column Name", "Data Type"]);
@@ -314,5 +327,51 @@ mod tests {
             table.does_violate_unique_constraint(&cols, &val).is_err(),
             true
         );
+    }
+}
+
+mod util {
+    use super::{Cell, PTable, Row};
+
+    pub fn rotate_2d_vec(data: &Vec<Vec<String>>) -> Vec<Vec<&String>> {
+        match data.first() {
+            None => vec![vec![]],
+            _ => {
+                let number_of_rows = data.first().unwrap().len();
+                let number_of_cols = data.len();
+                let mut ret_data: Vec<Vec<&String>> = vec![vec![]; number_of_rows];
+
+                println!("start rotating");
+                for row_idx in 0..number_of_rows {
+                    for col_idx in 0..number_of_cols {
+                        println!("row idx = {}, col idx = {}", row_idx, col_idx);
+                        ret_data[row_idx].push(&data[col_idx][row_idx]);
+                    }
+                }
+
+                return ret_data;
+            }
+        }
+    }
+
+    pub fn pretty_print(data: &Vec<Vec<&String>>, header: Vec<String>) {
+        let mut p_table = PTable::new();
+
+        for d in data {
+            for i in d {
+                println!("i = {}", i);
+            }
+        }
+
+        p_table.add_row(Row::new(
+            header.iter().map(|h| Cell::new(h)).collect::<Vec<Cell>>(),
+        ));
+
+        for row in data {
+            p_table.add_row(Row::new(
+                row.iter().map(|c| Cell::new(*c)).collect::<Vec<Cell>>(),
+            ));
+        }
+        p_table.printstd();
     }
 }
