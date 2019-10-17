@@ -12,11 +12,13 @@ use std::io::{stdin, stdout};
 
 use command_parser::extract_info_from_insert_cmd;
 use database::Database;
+use parser::select::SelectQuery;
 use table::Table;
 
-pub mod command_parser;
+mod command_parser;
 mod database;
-pub mod table;
+mod parser;
+mod table;
 
 enum MetaCommand {
     Exit,
@@ -45,6 +47,7 @@ enum DbCommand {
     Delete(String),
     Update(String),
     CreateTable(String),
+    Select(String),
     Unknown(String),
 }
 
@@ -56,6 +59,7 @@ impl DbCommand {
             "update" => DbCommand::Update(command),
             "delete" => DbCommand::Delete(command),
             "create" => DbCommand::CreateTable(command),
+            "select" => DbCommand::Select(command),
             _ => DbCommand::Unknown(command),
         }
     }
@@ -123,6 +127,34 @@ fn main() {
             .expect("Error while trying to read from stdin");
         match handle_commands(&command.trim().to_owned()) {
             CommandType::DbCommand(cmd) => match cmd {
+                DbCommand::Select(ccmd) => {
+                    let select_query = SelectQuery::new(&ccmd);
+
+                    match select_query {
+                        Ok(sq) => match (db.table_exists((&sq.from).to_string())) {
+                            true => {
+                                let db_table = db.get_table((&sq.from).to_string());
+                                for col in &sq.projection {
+                                    if !db_table.column_exist((&col).to_string()) {
+                                        println!("Cannot execute query, cannot find column {} in table {}",col, db_table.name);
+                                        return;
+                                    }
+                                }
+
+                                db_table.execute_select_query(sq);
+                            }
+                            false => {
+                                println!(
+                                    "Cannot execute query the table {} doesn't exists",
+                                    sq.from
+                                );
+                            }
+                        },
+                        Err(error) => {
+                            println!("{}", error);
+                        }
+                    }
+                }
                 DbCommand::Insert(ccmd) => {
                     let (table, columns, values) = extract_info_from_insert_cmd(ccmd.to_owned());
                     match db.table_exists(table.to_string()) {
