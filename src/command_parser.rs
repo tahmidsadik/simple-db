@@ -1,10 +1,4 @@
 use regex::Regex;
-use sqlparser::ast::{
-    SelectItem::{ExprWithAlias, QualifiedWildcard, UnnamedExpr, Wildcard},
-    SetExpr, Statement, TableFactor,
-};
-use sqlparser::dialect::GenericDialect;
-use sqlparser::parser::Parser;
 
 #[derive(PartialEq, Debug)]
 pub struct ParsedColumn {
@@ -103,57 +97,6 @@ pub fn extract_info_from_create_table_cmd(cmd: String) -> (String, Vec<ParsedCol
     }
 
     return (String::from(table_name), parsed_columns);
-}
-
-pub fn extract_info_from_select_statements(sql: &str) {
-    let dialect = GenericDialect {};
-    let statement = &Parser::parse_sql(&dialect, sql.to_string()).unwrap()[0];
-    match statement {
-        Statement::Query(bq) => match &(*bq).body {
-            SetExpr::Select(select) => {
-                for p in &(*select).projection {
-                    match p {
-                        UnnamedExpr(exp) => {
-                            println!("unnamed expr {}", exp);
-                        }
-                        QualifiedWildcard(obj_name) => {
-                            println!("objname = {}", obj_name);
-                        }
-                        Wildcard => {
-                            println!("wildcard");
-                        }
-                        ExprWithAlias { expr, alias } => {
-                            println!("expression = {} alias = {}", expr, alias);
-                        }
-                    }
-                }
-
-                for f in &(*select).from {
-                    match &f.relation {
-                        TableFactor::Table {
-                            name,
-                            alias,
-                            args,
-                            with_hints,
-                        } => {
-                            println!("Table name = {}", name);
-                            match alias {
-                                Some(alias) => println!("alias = {}", alias),
-                                None => println!("No alias"),
-                            }
-                        }
-                        _ => println!("Nested join or derived tables"),
-                    }
-                }
-            }
-            _ => {
-                println!("don't care");
-            }
-        },
-        _ => {
-            println!("don't care");
-        }
-    }
 }
 
 #[cfg(test)]
@@ -303,7 +246,7 @@ mod tests {
     #[test]
     fn tests_parsing_select_statement() {
         let sql = "select * from users";
-        let y = extract_info_from_select_statements(&sql);
+        // let y = extract_info_from_select_statements(&sql);
         assert_eq!(1, 1);
     }
 }
