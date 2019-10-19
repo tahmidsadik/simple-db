@@ -91,7 +91,6 @@ fn handle_meta_command(cmd: MetaCommand, db: &mut Database) {
             }
         }
         MetaCommand::Persist => {
-            println!("Db length before encoding = {}", db.tables.len());
             let mut buffered_writer = BufWriter::new(File::create("dbfile1.bin").unwrap());
             bincode::serialize_into(&mut buffered_writer, &db)
                 .expect("Error while trying to serialize to binary data");
@@ -102,7 +101,6 @@ fn handle_meta_command(cmd: MetaCommand, db: &mut Database) {
             // file.read_to_end(&mut buffer).unwrap();
             // let mut decoded_db: Database = bincode::deserialize(&buffer[..]).unwrap();
             let decoded_db: Database = bincode::deserialize_from(&mut file).unwrap();
-            println!("db tables length = {}", decoded_db.tables.len());
             // db.tables[0].print_table();
             // db.tables[0].print_table_data();
             *db = decoded_db;
@@ -114,13 +112,10 @@ fn handle_meta_command(cmd: MetaCommand, db: &mut Database) {
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
     let mut command = String::new();
-    for arg in args {
-        println!("{}", arg);
-    }
     let mut db = Database::new();
 
     loop {
-        print!("sqlite> ");
+        print!("sdb> ");
         stdout().flush().unwrap();
         stdin()
             .read_line(&mut command)
@@ -131,7 +126,7 @@ fn main() {
                     let select_query = SelectQuery::new(&ccmd);
 
                     match select_query {
-                        Ok(sq) => match (db.table_exists((&sq.from).to_string())) {
+                        Ok(sq) => match db.table_exists((&sq.from).to_string()) {
                             true => {
                                 let db_table = db.get_table((&sq.from).to_string());
                                 for col in &sq.projection {
@@ -159,7 +154,6 @@ fn main() {
                     let (table, columns, values) = extract_info_from_insert_cmd(ccmd.to_owned());
                     match db.table_exists(table.to_string()) {
                         true => {
-                            println!("Table exists");
                             let db_table = db.get_table_mut(table.to_string());
                             match columns.iter().all(|c| db_table.column_exist(c.to_string())) {
                                 true => {
