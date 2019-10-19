@@ -217,7 +217,9 @@ impl Table {
             table.add_row(row![col.name, col.datatype]);
         }
 
+        println!("TableName: {}", self.name);
         table.printstd();
+        println!();
     }
 
     pub fn print_table_data(&self) {
