@@ -81,8 +81,11 @@ fn handle_meta_command(cmd: MetaCommand, db: &mut Database) {
     match cmd {
         MetaCommand::Exit => std::process::exit(0),
         MetaCommand::ListTables => {
+            if db.tables.len() == 0 {
+                println!("No tables found");
+            }
             for table in &db.tables {
-                table.print_table();
+ ;               table.print_table();
             }
         }
         MetaCommand::PrintData => {
