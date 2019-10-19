@@ -6,7 +6,7 @@ use std::fmt;
 use std::result::Result;
 
 use crate::command_parser;
-use crate::parser::select::SelectQuery;
+use crate::parser::{create::CreateQuery, select::SelectQuery};
 use command_parser::extract_info_from_create_table_cmd;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -111,7 +111,9 @@ pub struct Table {
 
 impl Table {
     pub fn new(cmd: String) -> Table {
-        let (table_name, columns) = extract_info_from_create_table_cmd(cmd);
+        let cq = CreateQuery::new(&cmd).unwrap();
+        let table_name = cq.table_name;
+        let columns = cq.columns;
 
         let mut table_cols: Vec<ColumnHeader> = vec![];
         let mut table_data: HashMap<String, ColumnData> = HashMap::new();
