@@ -140,6 +140,15 @@ impl Table {
         }
     }
 
+    pub fn get_column(&self, col_name: String) -> &ColumnHeader {
+        self.columns
+            .iter()
+            .filter(|c| c.name == col_name)
+            .collect::<Vec<&ColumnHeader>>()
+            .first()
+            .unwrap()
+    }
+
     pub fn does_violate_unique_constraint(
         &self,
         cols: &Vec<String>,
@@ -202,11 +211,30 @@ impl Table {
 
     pub fn execute_select_query(&self, sq: SelectQuery) {
         let mut data: Vec<Vec<String>> = vec![];
-        for col in &sq.projection {
-            let row = self.rows.get(col).unwrap();
-            let column = row.get_serialized_col_data();
-            data.push(column);
+
+        let expr = sq.where_expressions.first();
+        match expr {
+            Some(where_expr) => {
+                let col = self.get_column(where_expr.left.to_string());
+                if col.index.contains_key(&where_expr.right) {
+                    let idx = col.index.get(&where_expr.right).unwrap();
+
+                    for col in &sq.projection {
+                        let row = self.rows.get(col).unwrap();
+                        let column = row.get_serialized_col_data();
+                        data.push(vec![column[*idx].to_string()]);
+                    }
+                }
+            }
+            None => {
+                for col in &sq.projection {
+                    let row = self.rows.get(col).unwrap();
+                    let column = row.get_serialized_col_data();
+                    data.push(column);
+                }
+            }
         }
+
         let rotated_data = util::rotate_2d_vec(&data);
         util::pretty_print(&rotated_data, sq.projection);
     }

@@ -1,13 +1,13 @@
 use sqlparser::ast::{
     Expr,
     SelectItem::{ExprWithAlias, QualifiedWildcard, UnnamedExpr, Wildcard},
-    SetExpr, Statement, TableFactor,
+    SetExpr, Statement, TableFactor, Value,
 };
-use sqlparser::dialect::GenericDialect;
+use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::Parser;
 
 #[derive(Debug)]
-pub enum BinaryOperator {
+pub enum Binary {
     Eq,
     Lt,
     Gt,
@@ -15,8 +15,8 @@ pub enum BinaryOperator {
 
 #[derive(Debug)]
 pub enum Operator {
-    UnaryOperator,
-    BinaryOperator,
+    Unary,
+    Binary(Binary),
     Ternary,
     None,
 }
@@ -33,16 +33,17 @@ pub struct Expression {
 pub struct SelectQuery {
     pub from: String,            // table name
     pub projection: Vec<String>, // columns that will be fetched
-    pub where_expressions: Vec<Operator>,
+    pub where_expressions: Vec<Expression>,
 }
 
 impl SelectQuery {
     pub fn new(query: &str) -> Result<SelectQuery, String> {
-        let dialect = GenericDialect {};
+        let dialect = MySqlDialect {};
         let statement = &Parser::parse_sql(&dialect, query.to_string()).unwrap()[0];
 
         let mut table_name: Option<String> = None;
         let mut projection: Vec<String> = vec![];
+        let mut where_expressions: Vec<Expression> = vec![];
 
         match statement {
             Statement::Query(bq) => match &(*bq).body {
@@ -102,6 +103,43 @@ impl SelectQuery {
                     match &(*select).selection {
                         Some(where_expression) => {
                             println!("{:?}", where_expression);
+                            match where_expression {
+                                Expr::BinaryOp { left, op, right } => {
+                                    if let Expr::Identifier(col_name) = &(**left) {
+                                        if let Expr::Value(v) = &(**right) {
+                                            if let Value::Number(n) = v {
+                                                let bo = match op {
+                                                    sqlparser::ast::BinaryOperator::Eq => {
+                                                        where_expressions.push(Expression {
+                                                            left: col_name.to_string(),
+                                                            right: n.to_string(),
+                                                            op: Operator::Binary(Binary::Eq),
+                                                        });
+                                                    }
+                                                    sqlparser::ast::BinaryOperator::Gt => {
+                                                        where_expressions.push(Expression {
+                                                            left: col_name.to_string(),
+                                                            right: n.to_string(),
+                                                            op: Operator::Binary(Binary::Gt),
+                                                        });
+                                                    }
+                                                    sqlparser::ast::BinaryOperator::Lt => {
+                                                        where_expressions.push(Expression {
+                                                            left: col_name.to_string(),
+                                                            right: n.to_string(),
+                                                            op: Operator::Binary(Binary::Lt),
+                                                        });
+                                                    }
+                                                    _ => {
+                                                        panic!("cannot parse select query");
+                                                    }
+                                                };
+                                            }
+                                        }
+                                    };
+                                }
+                                _ => {}
+                            }
                         }
                         None => {}
                     }
@@ -119,10 +157,10 @@ impl SelectQuery {
             Some(name) => Ok(SelectQuery {
                 from: name,
                 projection,
-                where_expressions: vec![],
+                where_expressions,
             }),
             None => Err(
-                "Error while trying to parser select statement. Cannot extract table name"
+                "Error while trying to parse select statement. Cannot extract table name"
                     .to_string(),
             ),
         }

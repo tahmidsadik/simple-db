@@ -117,6 +117,8 @@ fn main() {
     let mut command = String::new();
     let mut db = Database::new();
 
+    handle_meta_command(MetaCommand::Restore, &mut db);
+
     loop {
         print!("sdb> ");
         stdout().flush().unwrap();

@@ -1,8 +1,8 @@
 use sqlparser::ast::{
-    ColumnDef, DataType::Custom, Expr, FileFormat, ObjectName, SetExpr, SqlOption, Statement,
+    ColumnDef, ColumnOption, DataType, Expr, FileFormat, ObjectName, SetExpr, SqlOption, Statement,
     Statement::CreateTable, TableConstraint,
 };
-use sqlparser::dialect::GenericDialect;
+use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::Parser;
 
 #[derive(PartialEq, Debug)]
@@ -21,7 +21,7 @@ pub struct CreateQuery {
 
 impl CreateQuery {
     pub fn new(query: &str) -> Result<CreateQuery, String> {
-        let dialect = GenericDialect {};
+        let dialect = MySqlDialect {};
         let statement = &Parser::parse_sql(&dialect, query.to_string()).unwrap()[0];
 
         match statement {
@@ -37,28 +37,50 @@ impl CreateQuery {
                 println!("table name = {}, ", name);
                 let table_name = name;
                 let mut parsed_columns: Vec<ParsedColumn> = vec![];
+
                 for col in columns {
                     let name = col.name.to_string();
+                    println!("raw datatype = {:?}", &col.data_type);
                     let datatype = match &col.data_type {
-                        Int => "int",
-                        Boolean => "bool",
-                        Text => "text",
-                        Float => "float",
-                        Custom(ObjectName(custom_type)) => {
+                        DataType::SmallInt => "int",
+                        DataType::Int => "int",
+                        DataType::BigInt => "int",
+                        DataType::Boolean => "bool",
+                        DataType::Text => "string",
+                        DataType::Varchar(_bytes) => "string",
+                        DataType::Float(_precision) => "float",
+                        DataType::Decimal(_precision1, _precision2) => "float",
+                        DataType::Custom(ObjectName(custom_type)) => {
+                            println!("type  = {}", custom_type[0]);
                             if custom_type[0] == "string" {
                                 "string"
                             } else {
                                 "invalid"
                             }
                         }
+                        _ => "invalid",
                     };
+
+                    println!("parsed datatype = {}", datatype);
+
+                    let mut is_pk: bool = false;
+                    for column_option in &col.options {
+                        is_pk = match column_option.option {
+                            ColumnOption::Unique { is_primary } => is_primary,
+                            _ => false,
+                        };
+                    }
+
                     parsed_columns.push(ParsedColumn {
                         name,
                         datatype: datatype.to_string(),
-                        is_pk: false,
+                        is_pk,
                         is_nullable: false,
                     });
                 }
+
+                println!("constraints =\n{:?}", &constraints);
+                println!("with options = \n{:?}", &with_options);
 
                 for constraint in constraints {
                     println!("{:?}", constraint);
