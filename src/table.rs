@@ -2,6 +2,7 @@ use prettytable::{Cell, Row, Table as PTable};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
+use std::ops::Bound::{Excluded, Unbounded};
 use std::result::Result;
 
 use crate::parser::{
@@ -245,12 +246,18 @@ impl Table {
                         }
                         Binary::Gt => {
                             let mut indexes: Vec<usize> = vec![];
+
+                            let mut new_index: BTreeMap<i32, usize> = BTreeMap::new();
+
                             for (key, val) in col.index.iter() {
-                                if key.parse::<usize>().unwrap()
-                                    > where_expr.right.parse::<usize>().unwrap()
-                                {
-                                    indexes.push(*val);
-                                }
+                                new_index.insert(key.parse::<i32>().unwrap(), *val);
+                            }
+
+                            for (_key, val) in new_index.range((
+                                Excluded(&(where_expr.right.parse::<i32>().unwrap())),
+                                Unbounded,
+                            )) {
+                                indexes.push(*val);
                             }
 
                             data = self.select_data(&sq.projection, &indexes);
