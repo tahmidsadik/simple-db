@@ -209,6 +209,24 @@ impl Table {
         }
     }
 
+    fn select_data(
+        &self,
+        columns_to_fetch: &Vec<String>,
+        indexes: &Vec<usize>,
+    ) -> Vec<Vec<String>> {
+        let mut data = vec![];
+        for col in columns_to_fetch {
+            let row = self.rows.get(col).unwrap();
+            let column = row.get_serialized_col_data();
+            let mut filtered_data = vec![];
+            for idx in indexes {
+                filtered_data.push(column[*idx].to_string());
+            }
+            data.push(filtered_data);
+        }
+        return data;
+    }
+
     pub fn execute_select_query(&self, sq: SelectQuery) {
         let mut data: Vec<Vec<String>> = vec![];
 
@@ -222,12 +240,7 @@ impl Table {
                         Binary::Eq => {
                             if col.index.contains_key(&where_expr.right) {
                                 let idx = col.index.get(&where_expr.right).unwrap();
-
-                                for col in &sq.projection {
-                                    let row = self.rows.get(col).unwrap();
-                                    let column = row.get_serialized_col_data();
-                                    data.push(vec![column[*idx].to_string()]);
-                                }
+                                data = self.select_data(&sq.projection, &vec![*idx]);
                             }
                         }
                         Binary::Gt => {
@@ -240,15 +253,7 @@ impl Table {
                                 }
                             }
 
-                            for col in &sq.projection {
-                                let row = self.rows.get(col).unwrap();
-                                let column = row.get_serialized_col_data();
-                                let mut filtered_data = vec![];
-                                for idx in &indexes {
-                                    filtered_data.push(column[*idx].to_string());
-                                }
-                                data.push(filtered_data);
-                            }
+                            data = self.select_data(&sq.projection, &indexes);
                         }
                         _ => {}
                     },
