@@ -1,13 +1,13 @@
-#[macro_use]
 use prettytable::{Cell, Row, Table as PTable};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::result::Result;
 
-use crate::command_parser;
-use crate::parser::{create::CreateQuery, select::SelectQuery};
-use command_parser::extract_info_from_create_table_cmd;
+use crate::parser::{
+    create::CreateQuery,
+    select::{Binary, Operator, SelectQuery},
+};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum DataType {
@@ -216,14 +216,43 @@ impl Table {
         match expr {
             Some(where_expr) => {
                 let col = self.get_column(where_expr.left.to_string());
-                if col.index.contains_key(&where_expr.right) {
-                    let idx = col.index.get(&where_expr.right).unwrap();
 
-                    for col in &sq.projection {
-                        let row = self.rows.get(col).unwrap();
-                        let column = row.get_serialized_col_data();
-                        data.push(vec![column[*idx].to_string()]);
-                    }
+                match &where_expr.op {
+                    Operator::Binary(bop) => match bop {
+                        Binary::Eq => {
+                            if col.index.contains_key(&where_expr.right) {
+                                let idx = col.index.get(&where_expr.right).unwrap();
+
+                                for col in &sq.projection {
+                                    let row = self.rows.get(col).unwrap();
+                                    let column = row.get_serialized_col_data();
+                                    data.push(vec![column[*idx].to_string()]);
+                                }
+                            }
+                        }
+                        Binary::Gt => {
+                            let mut indexes: Vec<usize> = vec![];
+                            for (key, val) in col.index.iter() {
+                                if key.parse::<usize>().unwrap()
+                                    > where_expr.right.parse::<usize>().unwrap()
+                                {
+                                    indexes.push(*val);
+                                }
+                            }
+
+                            for col in &sq.projection {
+                                let row = self.rows.get(col).unwrap();
+                                let column = row.get_serialized_col_data();
+                                let mut filtered_data = vec![];
+                                for idx in &indexes {
+                                    filtered_data.push(column[*idx].to_string());
+                                }
+                                data.push(filtered_data);
+                            }
+                        }
+                        _ => {}
+                    },
+                    _ => {}
                 }
             }
             None => {
@@ -304,13 +333,12 @@ impl Table {
         self.columns.iter().any(|col| col.name == column)
     }
 
-    pub fn does_column_value_match(&self, _column: String, _value: String) {}
+    // pub fn does_column_value_match(&self, _column: String, _value: String) {}
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use command_parser::extract_info_from_insert_cmd;
     #[test]
     fn tests_creating_a_table() {
         let command =
@@ -373,10 +401,8 @@ mod util {
                 let number_of_cols = data.len();
                 let mut ret_data: Vec<Vec<&String>> = vec![vec![]; number_of_rows];
 
-                println!("start rotating");
                 for row_idx in 0..number_of_rows {
                     for col_idx in 0..number_of_cols {
-                        println!("row idx = {}, col idx = {}", row_idx, col_idx);
                         ret_data[row_idx].push(&data[col_idx][row_idx]);
                     }
                 }
