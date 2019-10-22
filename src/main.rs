@@ -117,7 +117,7 @@ fn main() {
     let mut command = String::new();
     let mut db = Database::new();
 
-    handle_meta_command(MetaCommand::Restore, &mut db);
+    // handle_meta_command(MetaCommand::Restore, &mut db);
 
     loop {
         print!("sdb> ");
@@ -166,8 +166,12 @@ fn main() {
                                         match db_table
                                             .does_violate_unique_constraint(&columns, value)
                                         {
-                                            Err(err) => println!("{}", err),
-                                            Ok(()) => db_table.insert_row(&columns, &values),
+                                            Err(err) => {
+                                                println!("Unique key constaint violation: {}", err)
+                                            }
+                                            Ok(()) => {
+                                                db_table.insert_row(&columns, &values);
+                                            }
                                         }
                                     }
                                 }

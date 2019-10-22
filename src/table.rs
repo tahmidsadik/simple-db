@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::ops::Bound::{Excluded, Unbounded};
 use std::result::Result;
+use std::str::FromStr;
 
 use crate::parser::{
     create::CreateQuery,
@@ -52,22 +53,31 @@ pub struct ColumnHeader {
     pub name: String,
     pub datatype: DataType,
     pub is_indexed: bool,
-    pub index: BTreeMap<String, usize>,
+    pub index: ColumnIndex,
     pub is_primary_key: bool,
 }
 
 impl ColumnHeader {
     pub fn new(name: String, datatype: String, is_primary_key: bool) -> ColumnHeader {
+        let dt = DataType::new(datatype);
+        let index = match dt {
+            DataType::Int => ColumnIndex::Int(BTreeMap::new()),
+            DataType::Float => ColumnIndex::None,
+            DataType::Str => ColumnIndex::Str(BTreeMap::new()),
+            DataType::Bool => ColumnIndex::Bool(BTreeMap::new()),
+            DataType::Invalid => ColumnIndex::None,
+        };
+
         ColumnHeader {
             name: name,
-            datatype: DataType::new(datatype),
+            datatype: dt,
             is_indexed: if is_primary_key { true } else { false },
-            index: BTreeMap::new(),
+            index,
             is_primary_key,
         }
     }
 
-    pub fn get_mut_index(&mut self) -> &mut BTreeMap<String, usize> {
+    pub fn get_mut_index(&mut self) -> &mut ColumnIndex {
         return &mut self.index;
     }
 }
@@ -101,6 +111,14 @@ impl ColumnData {
             ColumnData::None => panic!("Found None in columns"),
         }
     }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+pub enum ColumnIndex {
+    Int(BTreeMap<i32, usize>),
+    Str(BTreeMap<String, usize>),
+    Bool(BTreeMap<bool, usize>),
+    None,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -157,19 +175,57 @@ impl Table {
     ) -> Result<(), String> {
         for c in &self.columns {
             if c.is_primary_key {
-                let index = &c.index;
+                let col_idx = &c.index;
                 for (idx, name) in cols.iter().enumerate() {
                     if *name == c.name {
                         let val = &values[idx];
-                        match index.contains_key(val) {
-                            true => {
-                                return Err(format!(
-                                    "Error: unique constraint violation for column {}.
+
+                        match col_idx {
+                            ColumnIndex::Int(index) => {
+                                match index.contains_key(&val.parse::<i32>().unwrap()) {
+                                    true => {
+                                        return Err(format!(
+                                            "Error: unique constraint violation for column {}.
                             Value {} already exists for column {}",
-                                    *name, val, *name
+                                            *name, val, *name
+                                        ));
+                                    }
+                                    false => return Ok(()),
+                                };
+                            }
+                            ColumnIndex::Bool(index) => {
+                                match index.contains_key(
+                                    &val.parse::<bool>()
+                                        .expect("couldn't parse value to be a boolean"),
+                                ) {
+                                    true => {
+                                        return Err(format!(
+                                            "Error: unique constraint violation for column {}.
+                            Value {} already exists for column {}",
+                                            *name, val, *name
+                                        ));
+                                    }
+                                    false => return Ok(()),
+                                };
+                            }
+                            ColumnIndex::Str(index) => {
+                                match index.contains_key(val) {
+                                    true => {
+                                        return Err(format!(
+                                            "Error: unique constraint violation for column {}.
+                            Value {} already exists for column {}",
+                                            *name, val, *name
+                                        ));
+                                    }
+                                    false => return Ok(()),
+                                };
+                            }
+                            ColumnIndex::None => {
+                                return Err(format!(
+                                    "Error: cannot find index for column {}",
+                                    name
                                 ));
                             }
-                            false => return Ok(()),
                         };
                     }
                 }
@@ -189,23 +245,40 @@ impl Table {
                 .filter(|c| c.name == key.to_string())
                 .collect::<Vec<&mut ColumnHeader>>();
 
-            let index = column_headers
+            let col_index = column_headers
                 .first_mut()
                 .expect("Couldn't find column to insert row")
                 .get_mut_index();
 
             for value in values {
-                // TODO: only check for unique constraint violation if unique constraint exists for
-                // the column
                 let val = &value[i];
                 match table_col_data {
-                    ColumnData::Int(c_vec) => c_vec.push(val.parse::<i32>().unwrap()),
-                    ColumnData::Float(c_vec) => c_vec.push(val.parse::<f32>().unwrap()),
-                    ColumnData::Bool(c_vec) => c_vec.push(val.parse::<bool>().unwrap()),
-                    ColumnData::Str(c_vec) => c_vec.push(val.to_string()),
+                    ColumnData::Int(c_vec) => {
+                        let val = val.parse::<i32>().unwrap();
+                        c_vec.push(val);
+                        if let ColumnIndex::Int(index) = col_index {
+                            index.insert(val, table_col_data.count() - 1);
+                        }
+                    }
+                    ColumnData::Float(c_vec) => {
+                        let parsed_val = val.parse::<f32>().unwrap();
+                        c_vec.push(val.parse::<f32>().unwrap());
+                    }
+                    ColumnData::Bool(c_vec) => {
+                        let val = val.parse::<bool>().unwrap();
+                        c_vec.push(val);
+                        if let ColumnIndex::Bool(index) = col_index {
+                            index.insert(val, table_col_data.count() - 1);
+                        }
+                    }
+                    ColumnData::Str(c_vec) => {
+                        c_vec.push(val.to_string());
+                        if let ColumnIndex::Str(index) = col_index {
+                            index.insert(val.to_string(), table_col_data.count() - 1);
+                        }
+                    }
                     ColumnData::None => panic!("None data Found"),
                 }
-                index.insert(val.to_string(), table_col_data.count() - 1);
             }
         }
     }
@@ -228,6 +301,10 @@ impl Table {
         return data;
     }
 
+    fn execute_select_query_without_index(&self, sq: &SelectQuery) {
+        println!("Cannot execute select query without index.");
+    }
+
     pub fn execute_select_query(&self, sq: SelectQuery) {
         let mut data: Vec<Vec<String>> = vec![];
 
@@ -236,35 +313,65 @@ impl Table {
             Some(where_expr) => {
                 let col = self.get_column(where_expr.left.to_string());
 
-                match &where_expr.op {
-                    Operator::Binary(bop) => match bop {
-                        Binary::Eq => {
-                            if col.index.contains_key(&where_expr.right) {
-                                let idx = col.index.get(&where_expr.right).unwrap();
-                                data = self.select_data(&sq.projection, &vec![*idx]);
+                if (col.is_indexed) {
+                    match &where_expr.op {
+                        Operator::Binary(bop) => match bop {
+                            Binary::Eq => match &col.index {
+                                ColumnIndex::Int(index) => {
+                                    let val = &(where_expr.right).parse::<i32>().expect("Type mismatch error: Expected right side to be of type integer.");
+                                    if index.contains_key(val) {
+                                        let idx = index.get(val).unwrap();
+                                        data = self.select_data(&sq.projection, &vec![*idx]);
+                                    }
+                                }
+                                ColumnIndex::Str(index) => {
+                                    let val = (&where_expr.right).to_string();
+                                    if index.contains_key(&val) {
+                                        let idx = index.get(&val).unwrap();
+                                        data = self.select_data(&sq.projection, &vec![*idx]);
+                                    }
+                                }
+                                ColumnIndex::Bool(index) => {
+                                    let val = &(where_expr.right).parse::<bool>().expect("Type mismatch error: Expected right side to be of type boolean.");
+                                    if index.contains_key(val) {
+                                        let idx = index.get(val).unwrap();
+                                        data = self.select_data(&sq.projection, &vec![*idx]);
+                                    }
+                                }
+                                ColumnIndex::None => self.execute_select_query_without_index(&sq),
+                            },
+                            Binary::Gt => {
+                                let mut indexes: Vec<usize> = vec![];
+
+                                match &col.index {
+                                    ColumnIndex::Int(index) => {
+                                        let val = &(where_expr.right).parse::<i32>().expect("Type mismatch error: Expected right side to be of type integer.");
+                                    }
+                                    ColumnIndex::Str(index) => {
+                                        let val = (&(where_expr.right)).to_string();
+                                        for (_key, val) in index.range((Excluded(val), Unbounded)) {
+                                            indexes.push(*val);
+                                        }
+                                    }
+                                    ColumnIndex::Bool(index) => {
+                                        let val = &(where_expr.right).parse::<bool>().expect("Type mismatch error: Expected right side to be of type boolean.");
+                                        for (_key, val) in index.range((Excluded(val), Unbounded)) {
+                                            indexes.push(*val);
+                                        }
+                                    }
+                                    ColumnIndex::None => {
+                                        self.execute_select_query_without_index(&sq)
+                                    }
+                                }
+
+                                data = self.select_data(&sq.projection, &indexes);
                             }
-                        }
-                        Binary::Gt => {
-                            let mut indexes: Vec<usize> = vec![];
-
-                            let mut new_index: BTreeMap<i32, usize> = BTreeMap::new();
-
-                            for (key, val) in col.index.iter() {
-                                new_index.insert(key.parse::<i32>().unwrap(), *val);
-                            }
-
-                            for (_key, val) in new_index.range((
-                                Excluded(&(where_expr.right.parse::<i32>().unwrap())),
-                                Unbounded,
-                            )) {
-                                indexes.push(*val);
-                            }
-
-                            data = self.select_data(&sq.projection, &indexes);
-                        }
+                            _ => {}
+                        },
                         _ => {}
-                    },
-                    _ => {}
+                    }
+                } else {
+                    self.execute_select_query_without_index(&sq);
                 }
             }
             None => {
@@ -277,7 +384,7 @@ impl Table {
         }
 
         let rotated_data = util::rotate_2d_vec(&data);
-        util::pretty_print(&rotated_data, sq.projection);
+        util::pretty_print(&rotated_data, &sq.projection);
     }
 
     pub fn print_table(&self) {
@@ -288,7 +395,6 @@ impl Table {
             table.add_row(row![col.name, col.datatype]);
         }
 
-        println!("TableName: {}", self.name);
         table.printstd();
         println!();
     }
@@ -310,17 +416,10 @@ impl Table {
         );
 
         let first_col_data = self.rows.get(&self.columns.first().unwrap().name).unwrap();
-
-        let num_rows = match first_col_data {
-            ColumnData::Int(cd) => cd.len(),
-            ColumnData::Float(cd) => cd.len(),
-            ColumnData::Bool(cd) => cd.len(),
-            ColumnData::Str(cd) => cd.len(),
-            ColumnData::None => panic!("Found None data"),
-        };
-
+        let num_rows = first_col_data.count();
         let mut print_table_rows: Vec<Row> = vec![Row::new(vec![]); num_rows];
 
+        println!("number of rows = {}", num_rows);
         for col_name in &cnames {
             let col_val = self
                 .rows
@@ -393,7 +492,7 @@ mod tests {
         let mut table = Table::new(command);
         let cols = vec!["id".to_string(), "name".to_string()];
         let val = vec!["1".to_string(), "tahmid".to_string()];
-        table.does_violate_unique_constraint(&cols, &val);
+        table.does_violate_unique_constraint(&cols, &val).is_err();
         table.insert_row(&cols, &vec![val.clone()]);
         assert_eq!(
             table.does_violate_unique_constraint(&cols, &val).is_err(),
@@ -424,7 +523,7 @@ mod util {
         }
     }
 
-    pub fn pretty_print(data: &Vec<Vec<&String>>, header: Vec<String>) {
+    pub fn pretty_print(data: &Vec<Vec<&String>>, header: &Vec<String>) {
         let mut p_table = PTable::new();
 
         for d in data {
