@@ -1,7 +1,4 @@
-use sqlparser::ast::{
-    ColumnDef, ColumnOption, DataType, Expr, FileFormat, ObjectName, SetExpr, SqlOption, Statement,
-    Statement::CreateTable, TableConstraint,
-};
+use sqlparser::ast::{ColumnOption, DataType, ObjectName, Statement::CreateTable};
 use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::Parser;
 
@@ -30,9 +27,9 @@ impl CreateQuery {
                 columns,
                 constraints,
                 with_options,
-                external,
-                file_format,
-                location,
+                external: _external,
+                file_format: _file_format,
+                location: _location,
             } => {
                 println!("table name = {}, ", name);
                 let table_name = name;

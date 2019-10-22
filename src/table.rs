@@ -4,7 +4,6 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::ops::Bound::{Excluded, Unbounded};
 use std::result::Result;
-use std::str::FromStr;
 
 use crate::parser::{
     create::CreateQuery,
@@ -313,7 +312,7 @@ impl Table {
             Some(where_expr) => {
                 let col = self.get_column(where_expr.left.to_string());
 
-                if (col.is_indexed) {
+                if col.is_indexed {
                     match &where_expr.op {
                         Operator::Binary(bop) => match bop {
                             Binary::Eq => match &col.index {
@@ -346,6 +345,9 @@ impl Table {
                                 match &col.index {
                                     ColumnIndex::Int(index) => {
                                         let val = &(where_expr.right).parse::<i32>().expect("Type mismatch error: Expected right side to be of type integer.");
+                                        for (_key, val) in index.range((Excluded(val), Unbounded)) {
+                                            indexes.push(*val);
+                                        }
                                     }
                                     ColumnIndex::Str(index) => {
                                         let val = (&(where_expr.right)).to_string();
@@ -419,7 +421,6 @@ impl Table {
         let num_rows = first_col_data.count();
         let mut print_table_rows: Vec<Row> = vec![Row::new(vec![]); num_rows];
 
-        println!("number of rows = {}", num_rows);
         for col_name in &cnames {
             let col_val = self
                 .rows
@@ -525,12 +526,6 @@ mod util {
 
     pub fn pretty_print(data: &Vec<Vec<&String>>, header: &Vec<String>) {
         let mut p_table = PTable::new();
-
-        for d in data {
-            for i in d {
-                println!("i = {}", i);
-            }
-        }
 
         p_table.add_row(Row::new(
             header.iter().map(|h| Cell::new(h)).collect::<Vec<Cell>>(),

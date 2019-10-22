@@ -87,8 +87,8 @@ impl SelectQuery {
                             TableFactor::Table {
                                 name,
                                 alias,
-                                args,
-                                with_hints,
+                                args: _args,
+                                with_hints: _with_hints,
                             } => {
                                 table_name = Some(name.to_string());
                                 match alias {
