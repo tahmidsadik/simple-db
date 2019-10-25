@@ -1,11 +1,19 @@
 # simple-db
+
 A simple sql database written in rust.
 One day I was wondering about how cool databases are and how do they work internally. And what better way to learn
 about database internals than to build one for yourself. This is an attempt to create a very simple sql database to
 learn about how they work.
 
+## Screenshots
+
+![Alt text](/images/shot1.png?raw=true "Screenshot 1")
+![Alt text](/images/shot2.png?raw=true "Screenshot 1")
+
 ## Progress
+
 The project is in very early stage. The features that have been implemented:
+
 - [x] REPL Interface
 - [x] Distinguish between meta commands and db commands.
 - [x] Columnar storage engine.
@@ -19,7 +27,9 @@ The project is in very early stage. The features that have been implemented:
 - [x] unique key constraints.
 
 ## Roadmap
+
 Features that are in the roadmap of the proejct:
+
 - [ ] Joins
   - [ ] Inner
   - [ ] Left
@@ -32,14 +42,13 @@ Features that are in the roadmap of the proejct:
 - [ ] Pluggable storage engine
 - [ ] Different implementations of storage engines to optimize different operations
   - [ ] Write Heavy - `LSM Tree && SSTable`
-  - [ ] Read Heavy - `B-Tree` 
+  - [ ] Read Heavy - `B-Tree`
 
 ## Getting Started
-The project is written in `rust`, so you need it in your system. You can get started with 
+
+The project is written in `rust`, so you need it in your system. You can get started with
 rust from here https://rustup.rs/. Then just clone the project and `cargo run` to run it.
 
 - `.tables` - prints list of tables with schema
-- `.data`   - prints all rows of all tables. Useful for debugging
-- `.exit`   - to exit
-
-
+- `.data` - prints all rows of all tables. Useful for debugging
+- `.exit` - to exit
