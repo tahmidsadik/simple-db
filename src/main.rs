@@ -166,7 +166,6 @@ fn main() {
                                 match db.table_exists(table_name.to_string()) {
                                     true => {
                                         let db_table = db.get_table_mut(table_name.to_string());
-                                        println!("all values {:?}", values);
                                         match columns
                                             .iter()
                                             .all(|c| db_table.column_exist(c.to_string()))

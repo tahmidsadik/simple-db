@@ -31,13 +31,12 @@ impl CreateQuery {
                 file_format: _file_format,
                 location: _location,
             } => {
-                println!("table name = {}, ", name);
                 let table_name = name;
                 let mut parsed_columns: Vec<ParsedColumn> = vec![];
 
                 for col in columns {
                     let name = col.name.to_string();
-                    println!("raw datatype = {:?}", &col.data_type);
+                    /* TODO: Add datetime and timestamp here */
                     let datatype = match &col.data_type {
                         DataType::SmallInt => "int",
                         DataType::Int => "int",
@@ -48,8 +47,7 @@ impl CreateQuery {
                         DataType::Float(_precision) => "float",
                         DataType::Decimal(_precision1, _precision2) => "float",
                         DataType::Custom(ObjectName(custom_type)) => {
-                            println!("type  = {}", custom_type[0]);
-                            if custom_type[0] == "string" {
+                            if custom_type[0] == "string".to_string() {
                                 "string"
                             } else {
                                 "invalid"
@@ -57,8 +55,6 @@ impl CreateQuery {
                         }
                         _ => "invalid",
                     };
-
-                    println!("parsed datatype = {}", datatype);
 
                     let mut is_pk: bool = false;
                     for column_option in &col.options {
@@ -75,13 +71,11 @@ impl CreateQuery {
                         is_nullable: false,
                     });
                 }
-
-                println!("constraints =\n{:?}", &constraints);
-                println!("with options = \n{:?}", &with_options);
-
-                for constraint in constraints {
-                    println!("{:?}", constraint);
-                }
+//                TODO: Handle constraints,
+//                Unique, Primary Key, Nullable, Default value etc.
+//                for constraint in constraints {
+//                    println!("{:?}", constraint);
+//                }
                 return Ok(CreateQuery {
                     table_name: table_name.to_string(),
                     columns: parsed_columns,
@@ -90,17 +84,5 @@ impl CreateQuery {
 
             _ => return Err("Error parsing query".to_string()),
         }
-
-        // match table_name {
-        //     Some(name) => Ok(SelectQuery {
-        //         from: name,
-        //         projection,
-        //         where_expressions: vec![],
-        //     }),
-        //     None => Err(
-        //         "Error while trying to parser select statement. Cannot extract table name"
-        //             .to_string(),
-        //     ),
-        // }
     }
 }

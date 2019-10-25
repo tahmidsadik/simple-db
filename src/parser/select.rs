@@ -51,21 +51,21 @@ impl SelectQuery {
                     for p in &(*select).projection {
                         match p {
                             UnnamedExpr(exp) => {
-                                println!("unnamed expr {}", exp);
                                 match exp {
                                     Expr::Identifier(i) => {
                                         projection.push(i.to_string());
                                     }
                                     _ => {
-                                        println!("not ident");
+                                        println!("Failing to parse expression in the where clause.\
+                                        It's probably not an identifier or a value.\
+                                        Cannot parse nested expressions :( .");
                                     }
                                 }
                             }
                             QualifiedWildcard(obj_name) => {
-                                println!("objname = {}", obj_name);
+                                println!("Found qualified wildcard in the expression. Wildcard name is  {}", obj_name);
                             }
                             Wildcard => {
-                                println!("wildcard");
                                 projection.push("*".to_string());
                             }
                             ExprWithAlias { expr, alias } => {
@@ -75,7 +75,7 @@ impl SelectQuery {
                                         projection.push(i.to_string());
                                     }
                                     _ => {
-                                        println!("not ident");
+                                        println!("Detected expression with alias. Cannot parse expression with alias.");
                                     }
                                 }
                             }
