@@ -372,7 +372,7 @@ impl Table {
         println!("Cannot execute select query without index.");
     }
 
-    pub fn execute_select_query(&self, sq: SelectQuery) {
+    pub fn execute_select_query(&self, sq: &SelectQuery) {
         let mut data: Vec<Vec<String>> = vec![];
 
         let expr = sq.where_expressions.first();

@@ -165,4 +165,9 @@ impl SelectQuery {
             ),
         }
     }
+
+    pub fn insert_projections(&mut self, projection: Vec<String>) -> &mut SelectQuery {
+        self.projection = projection;
+        return self;
+    }
 }

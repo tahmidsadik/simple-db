@@ -1,14 +1,11 @@
 //#![feature(test)]
 #[macro_use]
 extern crate prettytable;
-extern crate regex;
 //extern crate test;
 
 use std::env;
 use std::fs::File;
-use std::io::prelude::Write;
-use std::io::BufWriter;
-use std::io::{stdin, stdout};
+use std::io::{prelude::Write, stdin, stdout, BufWriter, Read};
 
 use database::Database;
 use parser::insert::InsertQuery;
@@ -70,7 +67,7 @@ enum CommandType {
     DbCommand(DbCommand),
 }
 
-fn handle_commands(cmd: &String) -> CommandType {
+fn get_command_type(cmd: &String) -> CommandType {
     match cmd.starts_with(".") {
         true => CommandType::MetaCommand(MetaCommand::new(cmd.to_owned())),
         false => CommandType::DbCommand(DbCommand::new(cmd.to_owned())),
@@ -112,10 +109,129 @@ fn handle_meta_command(cmd: MetaCommand, db: &mut Database) {
     }
 }
 
+fn process_command(query: DbCommand, db: &mut Database) {
+    match query {
+        DbCommand::Select(ccmd) => {
+            let mut select_query = SelectQuery::new(&ccmd);
+
+            match select_query {
+                Ok(mut sq) => match db.table_exists((&sq.from).to_string()) {
+                    true => {
+                        let db_table = db.get_table((&sq.from).to_string());
+
+                        let cloned_projection = sq.projection.clone();
+
+                        for p in &cloned_projection {
+                            if p == "*" {
+                                let new_projections = db_table
+                                    .columns
+                                    .iter()
+                                    .map(|c| c.name.to_string())
+                                    .collect::<Vec<String>>();
+                                sq.insert_projections(new_projections);
+                            }
+                        }
+
+                        for col in &sq.projection {
+                            if !db_table.column_exist((&col).to_string()) {
+                                println!(
+                                    "Cannot execute query, cannot find column {} in table {}",
+                                    col, db_table.name
+                                );
+                                return;
+                            }
+                        }
+
+                        db_table.execute_select_query(&sq);
+                    }
+                    false => {
+                        println!("Cannot execute query the table {} doesn't exists", sq.from);
+                    }
+                },
+                Err(error) => {
+                    println!("{}", error);
+                }
+            }
+        }
+        DbCommand::Insert(ccmd) => {
+            match InsertQuery::from_str(&ccmd) {
+                Ok(iq) => {
+                    let table_name = iq.table_name;
+                    let columns = iq.columns;
+                    let values = iq.values;
+                    println!("cols = {:?}\n vals = {:?}", columns, values);
+                    match db.table_exists(table_name.to_string()) {
+                        true => {
+                            let db_table = db.get_table_mut(table_name.to_string());
+                            match columns.iter().all(|c| db_table.column_exist(c.to_string())) {
+                                true => {
+                                    for value in &values {
+                                        match db_table
+                                            .does_violate_unique_constraint(&columns, value)
+                                        {
+                                            Err(err) => {
+                                                println!("Unique key constaint violation: {}", err)
+                                            }
+                                            Ok(()) => {
+                                                db_table.insert_row(&columns, &values);
+                                            }
+                                        }
+                                    }
+                                }
+                                false => {
+                                    println!("Cannot insert, some of the columns do not exist");
+                                }
+                            }
+                        }
+                        false => println!("Table doesn't exist"),
+                    }
+                }
+                Err(err) => println!("Error while trying to parse insert statement: {}", err),
+            };
+        }
+        DbCommand::Update(ccmd) => println!("Update Command {}", ccmd),
+        DbCommand::Delete(ccmd) => println!("Delete Command {}", ccmd),
+        DbCommand::CreateTable(ccmd) => {
+            db.tables.push(Table::new(ccmd));
+        }
+        DbCommand::Unknown(ccmd) => println!("Unknown Command {}", ccmd),
+    }
+}
+
 fn main() {
-    let _args: Vec<String> = env::args().skip(1).collect();
+    let args: Vec<String> = env::args().skip(1).collect();
     let mut command = String::new();
     let mut db = Database::new();
+
+    for arg in args {
+        match File::open(arg) {
+            Ok(mut file) => {
+                let mut query = String::new();
+                file.read_to_string(&mut query).unwrap();
+                let queries = query
+                    .split(";")
+                    .map(|q| q.to_lowercase())
+                    .map(|q| q.replace("\n", ""))
+                    .map(|q| q.trim().to_string())
+                    .collect::<Vec<String>>();
+
+                for q in queries {
+                    match get_command_type(&q.to_lowercase()) {
+                        CommandType::DbCommand(cmd) => {
+                            process_command(cmd, &mut db);
+                        }
+                        CommandType::MetaCommand(cmd) => {
+                            handle_meta_command(cmd, &mut db);
+                        }
+                    }
+                }
+                println!("query processed");
+            }
+            Err(e) => {
+                println!("{}", e);
+            }
+        }
+    }
 
     // handle_meta_command(MetaCommand::Restore, &mut db);
 
@@ -125,85 +241,10 @@ fn main() {
         stdin()
             .read_line(&mut command)
             .expect("Error while trying to read from stdin");
-        match handle_commands(&command.trim().to_owned()) {
+
+        match get_command_type(&command.trim().to_owned()) {
             CommandType::DbCommand(cmd) => {
-                match cmd {
-                    DbCommand::Select(ccmd) => {
-                        let select_query = SelectQuery::new(&ccmd);
-
-                        match select_query {
-                            Ok(sq) => match db.table_exists((&sq.from).to_string()) {
-                                true => {
-                                    let db_table = db.get_table((&sq.from).to_string());
-                                    for col in &sq.projection {
-                                        if !db_table.column_exist((&col).to_string()) {
-                                            println!("Cannot execute query, cannot find column {} in table {}",col, db_table.name);
-                                            return;
-                                        }
-                                    }
-
-                                    db_table.execute_select_query(sq);
-                                }
-                                false => {
-                                    println!(
-                                        "Cannot execute query the table {} doesn't exists",
-                                        sq.from
-                                    );
-                                }
-                            },
-                            Err(error) => {
-                                println!("{}", error);
-                            }
-                        }
-                    }
-                    DbCommand::Insert(ccmd) => {
-                        match InsertQuery::from_str(&ccmd) {
-                            Ok(iq) => {
-                                let table_name = iq.table_name;
-                                let columns = iq.columns;
-                                let values = iq.values;
-                                match db.table_exists(table_name.to_string()) {
-                                    true => {
-                                        let db_table = db.get_table_mut(table_name.to_string());
-                                        match columns
-                                            .iter()
-                                            .all(|c| db_table.column_exist(c.to_string()))
-                                        {
-                                            true => {
-                                                for value in &values {
-                                                    match db_table.does_violate_unique_constraint(
-                                                        &columns, value,
-                                                    ) {
-                                                        Err(err) => println!(
-                                                            "Unique key constaint violation: {}",
-                                                            err
-                                                        ),
-                                                        Ok(()) => {
-                                                            db_table.insert_row(&columns, &values);
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            false => {
-                                                println!("Cannot insert, some of the columns do not exist");
-                                            }
-                                        }
-                                    }
-                                    false => println!("Table doesn't exist"),
-                                }
-                            }
-                            Err(err) => {
-                                println!("Error while trying to parse insert statement: {}", err)
-                            }
-                        };
-                    }
-                    DbCommand::Update(ccmd) => println!("Update Command {}", ccmd),
-                    DbCommand::Delete(ccmd) => println!("Delete Command {}", ccmd),
-                    DbCommand::CreateTable(ccmd) => {
-                        db.tables.push(Table::new(ccmd));
-                    }
-                    DbCommand::Unknown(ccmd) => println!("Unknown Command {}", ccmd),
-                }
+                process_command(cmd, &mut db);
             }
             CommandType::MetaCommand(cmd) => {
                 handle_meta_command(cmd, &mut db);

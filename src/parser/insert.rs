@@ -62,6 +62,12 @@ impl FromStr for InsertQuery {
                                                 true => value_set.push("true".to_string()),
                                                 false => value_set.push("false".to_string()),
                                             },
+                                            Value::SingleQuotedString(sqs) => {
+                                                value_set.push(sqs.to_string());
+                                            }
+                                            Value::Null => {
+                                                value_set.push("Null".to_string());
+                                            }
                                             _ => {}
                                         },
                                         Expr::Identifier(i) => {

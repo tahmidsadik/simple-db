@@ -25,7 +25,7 @@ impl CreateQuery {
             CreateTable {
                 name,
                 columns,
-                constraints: _constraints,
+                constraints: constraints,
                 with_options: _with_options,
                 external: _external,
                 file_format: _file_format,
@@ -45,15 +45,20 @@ impl CreateQuery {
                         DataType::Text => "string",
                         DataType::Varchar(_bytes) => "string",
                         DataType::Float(_precision) => "float",
+                        DataType::Double => "float",
                         DataType::Decimal(_precision1, _precision2) => "float",
                         DataType::Custom(ObjectName(custom_type)) => {
-                            if custom_type[0] == "string".to_string() {
-                                "string"
-                            } else {
-                                "invalid"
+                            match custom_type[0].as_ref() {
+                                "string" => "string",
+                                "tinyint" => "int",
+                                "datetime" => "string",
+                                _ => "invalid",
                             }
                         }
-                        _ => "invalid",
+                        _ => {
+                            println!("not matched on custom type");
+                            "invalid"
+                        }
                     };
 
                     let mut is_pk: bool = false;
@@ -72,10 +77,10 @@ impl CreateQuery {
                     });
                 }
                 //                TODO: Handle constraints,
-                //                Unique, Primary Key, Nullable, Default value etc.
-                //                for constraint in constraints {
-                //                    println!("{:?}", constraint);
-                //                }
+                //    Unique, Primary Key, Nullable, Default value etc.
+                for constraint in constraints {
+                    println!("{:?}", constraint);
+                }
                 return Ok(CreateQuery {
                     table_name: table_name.to_string(),
                     columns: parsed_columns,
