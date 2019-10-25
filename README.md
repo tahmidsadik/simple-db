@@ -11,7 +11,7 @@ The project is in very early stage. The features that have been implemented:
 - [x] Columnar storage engine.
 - [x] `Create Table` Command
 - [x] Generic validation structure.
-- [x] persistance with a comamnd `.persist`
+- [x] persistance with a command `.persist`
 - [x] Serialization | Deserialization to and from binary encodings.
 - [x] simple insert queries.
 - [x] In memory btree indexes only for primary keys.
