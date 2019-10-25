@@ -39,7 +39,7 @@ The project is written in `rust`, so you need it in your system. You can get sta
 rust from here https://rustup.rs/. Then just clone the project and `cargo run` to run it.
 
 - `.tables` - prints list of tables with schema
-- `.data`   - prints all rows of all tables. Useful only for debugging
+- `.data`   - prints all rows of all tables. Useful for debugging
 - `.exit`   - to exit
 
 
