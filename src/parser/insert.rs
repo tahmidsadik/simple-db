@@ -1,4 +1,4 @@
-use sqlparser::ast::{Expr, Query, SelectItem, SetExpr, Statement, Value, Values};
+use sqlparser::ast::{Expr, Query, SetExpr, Statement, Value, Values};
 use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::Parser;
 use std::str::FromStr;
@@ -9,15 +9,15 @@ pub struct InsertQuery {
     pub values: Vec<Vec<String>>,
 }
 
-impl InsertQuery {
-    fn new(table_name: String, columns: Vec<String>, values: Vec<Vec<String>>) -> InsertQuery {
-        InsertQuery {
-            table_name,
-            columns,
-            values,
-        }
-    }
-}
+// impl InsertQuery {
+//     fn new(table_name: String, columns: Vec<String>, values: Vec<Vec<String>>) -> InsertQuery {
+//         InsertQuery {
+//             table_name,
+//             columns,
+//             values,
+//         }
+//     }
+// }
 
 impl FromStr for InsertQuery {
     type Err = String;

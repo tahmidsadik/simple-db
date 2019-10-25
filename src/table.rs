@@ -9,7 +9,6 @@ use crate::parser::{
     create::CreateQuery,
     select::{Binary, Operator, SelectQuery},
 };
-use std::ops::RangeBounds;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum DataType {
@@ -330,7 +329,6 @@ impl Table {
                         }
                     }
                     ColumnData::Float(c_vec) => {
-                        let parsed_val = val.parse::<f32>().unwrap();
                         c_vec.push(val.parse::<f32>().unwrap());
                     }
                     ColumnData::Bool(c_vec) => {
@@ -370,7 +368,7 @@ impl Table {
         return data;
     }
 
-    fn execute_select_query_without_index(&self, sq: &SelectQuery) {
+    fn execute_select_query_without_index(&self, _sq: &SelectQuery) {
         println!("Cannot execute select query without index.");
     }
 
@@ -417,7 +415,6 @@ impl Table {
                                 _ => {}
                             }
                         }
-                        _ => {}
                     }
                 } else {
                     self.execute_select_query_without_index(&sq);
@@ -540,7 +537,7 @@ mod tests {
         let mut table = Table::new(command);
         let cols = vec!["id".to_string(), "name".to_string()];
         let val = vec!["1".to_string(), "tahmid".to_string()];
-        table.does_violate_unique_constraint(&cols, &val).is_err();
+        table.does_violate_unique_constraint(&cols, &val).unwrap();
         table.insert_row(&cols, &vec![val.clone()]);
         assert_eq!(
             table.does_violate_unique_constraint(&cols, &val).is_err(),

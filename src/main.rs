@@ -16,7 +16,6 @@ use parser::select::SelectQuery;
 use std::str::FromStr;
 use table::Table;
 
-mod command_parser;
 mod database;
 mod parser;
 mod table;

@@ -15,10 +15,10 @@ pub enum Binary {
 
 #[derive(Debug)]
 pub enum Operator {
-    Unary,
+    // Unary,
     Binary(Binary),
-    Ternary,
-    None,
+    // Ternary,
+    // None,
 }
 
 // Only binary operators for now
@@ -108,7 +108,7 @@ impl SelectQuery {
                                     if let Expr::Identifier(col_name) = &(**left) {
                                         if let Expr::Value(v) = &(**right) {
                                             if let Value::Number(n) = v {
-                                                let bo = match op {
+                                                match op {
                                                     sqlparser::ast::BinaryOperator::Eq => {
                                                         where_expressions.push(Expression {
                                                             left: col_name.to_string(),

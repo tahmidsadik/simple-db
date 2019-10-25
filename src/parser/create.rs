@@ -25,8 +25,8 @@ impl CreateQuery {
             CreateTable {
                 name,
                 columns,
-                constraints,
-                with_options,
+                constraints: _constraints,
+                with_options: _with_options,
                 external: _external,
                 file_format: _file_format,
                 location: _location,
@@ -71,11 +71,11 @@ impl CreateQuery {
                         is_nullable: false,
                     });
                 }
-//                TODO: Handle constraints,
-//                Unique, Primary Key, Nullable, Default value etc.
-//                for constraint in constraints {
-//                    println!("{:?}", constraint);
-//                }
+                //                TODO: Handle constraints,
+                //                Unique, Primary Key, Nullable, Default value etc.
+                //                for constraint in constraints {
+                //                    println!("{:?}", constraint);
+                //                }
                 return Ok(CreateQuery {
                     table_name: table_name.to_string(),
                     columns: parsed_columns,
