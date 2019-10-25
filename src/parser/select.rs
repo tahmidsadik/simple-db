@@ -6,7 +6,7 @@ use sqlparser::ast::{
 use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::Parser;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Binary {
     Eq,
     Lt,
@@ -50,18 +50,18 @@ impl SelectQuery {
                 SetExpr::Select(select) => {
                     for p in &(*select).projection {
                         match p {
-                            UnnamedExpr(exp) => {
-                                match exp {
-                                    Expr::Identifier(i) => {
-                                        projection.push(i.to_string());
-                                    }
-                                    _ => {
-                                        println!("Failing to parse expression in the where clause.\
-                                        It's probably not an identifier or a value.\
-                                        Cannot parse nested expressions :( .");
-                                    }
+                            UnnamedExpr(exp) => match exp {
+                                Expr::Identifier(i) => {
+                                    projection.push(i.to_string());
                                 }
-                            }
+                                _ => {
+                                    println!(
+                                        "Failing to parse expression in the where clause.\
+                                         It's probably not an identifier or a value.\
+                                         Cannot parse nested expressions :( ."
+                                    );
+                                }
+                            },
                             QualifiedWildcard(obj_name) => {
                                 println!("Found qualified wildcard in the expression. Wildcard name is  {}", obj_name);
                             }

@@ -2,13 +2,14 @@ use prettytable::{Cell, Row, Table as PTable};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
-use std::ops::Bound::{Excluded, Unbounded};
+use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::result::Result;
 
 use crate::parser::{
     create::CreateQuery,
     select::{Binary, Operator, SelectQuery},
 };
+use std::ops::RangeBounds;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum DataType {
@@ -118,6 +119,75 @@ pub enum ColumnIndex {
     Str(BTreeMap<String, usize>),
     Bool(BTreeMap<bool, usize>),
     None,
+}
+
+impl ColumnIndex {
+    fn get_idx_data(&self, val: &String) -> Result<Option<&usize>, String> {
+        match self {
+            ColumnIndex::Int(index) => match val.parse::<i32>() {
+                Ok(val) => Ok(index.get(&val)),
+                Err(e) => Err(e.to_string()),
+            },
+
+            ColumnIndex::Bool(index) => match val.parse::<bool>() {
+                Ok(val) => Ok(index.get(&val)),
+                Err(e) => Err(e.to_string()),
+            },
+            ColumnIndex::Str(index) => Ok(index.get(val)),
+
+            ColumnIndex::None => Ok(None),
+        }
+    }
+
+    fn get_idx_data_by_range(&self, val: &String, op: Binary) -> Result<Vec<usize>, String> {
+        let mut indexes: Vec<usize> = vec![];
+        match self {
+            ColumnIndex::Int(index) => match val.parse::<i32>() {
+                Ok(val) => {
+                    for (_key, idx) in index.range(if Binary::Gt == op {
+                        (Excluded(val), Unbounded)
+                    } else if Binary::Lt == op {
+                        (Unbounded, Excluded(val))
+                    } else {
+                        (Included(val), Included(val))
+                    }) {
+                        indexes.push(*idx);
+                    }
+                    Ok(indexes)
+                }
+                Err(e) => Err(e.to_string()),
+            },
+
+            ColumnIndex::Bool(index) => match val.parse::<bool>() {
+                Ok(val) => {
+                    for (_key, idx) in index.range(if Binary::Gt == op {
+                        (Excluded(val), Unbounded)
+                    } else if Binary::Lt == op {
+                        (Unbounded, Excluded(val))
+                    } else {
+                        (Included(val), Included(val))
+                    }) {
+                        indexes.push(*idx);
+                    }
+                    Ok(indexes)
+                }
+                Err(e) => Err(e.to_string()),
+            },
+            ColumnIndex::Str(index) => {
+                for (_key, idx) in index.range(if Binary::Gt == op {
+                    (Excluded(val.to_string()), Unbounded)
+                } else if Binary::Lt == op {
+                    (Unbounded, Excluded(val.to_string()))
+                } else {
+                    (Included(val.to_string()), Included(val.to_string()))
+                }) {
+                    indexes.push(*idx);
+                }
+                Ok(indexes)
+            }
+            ColumnIndex::None => Ok(indexes),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -314,62 +384,39 @@ impl Table {
 
                 if col.is_indexed {
                     match &where_expr.op {
-                        Operator::Binary(bop) => match bop {
-                            Binary::Eq => match &col.index {
-                                ColumnIndex::Int(index) => {
-                                    let val = &(where_expr.right).parse::<i32>().expect("Type mismatch error: Expected right side to be of type integer.");
-                                    if index.contains_key(val) {
-                                        let idx = index.get(val).unwrap();
-                                        data = self.select_data(&sq.projection, &vec![*idx]);
-                                    }
-                                }
-                                ColumnIndex::Str(index) => {
-                                    let val = (&where_expr.right).to_string();
-                                    if index.contains_key(&val) {
-                                        let idx = index.get(&val).unwrap();
-                                        data = self.select_data(&sq.projection, &vec![*idx]);
-                                    }
-                                }
-                                ColumnIndex::Bool(index) => {
-                                    let val = &(where_expr.right).parse::<bool>().expect("Type mismatch error: Expected right side to be of type boolean.");
-                                    if index.contains_key(val) {
-                                        let idx = index.get(val).unwrap();
-                                        data = self.select_data(&sq.projection, &vec![*idx]);
-                                    }
-                                }
-                                ColumnIndex::None => self.execute_select_query_without_index(&sq),
-                            },
-                            Binary::Gt => {
-                                let mut indexes: Vec<usize> = vec![];
-
-                                match &col.index {
-                                    ColumnIndex::Int(index) => {
-                                        let val = &(where_expr.right).parse::<i32>().expect("Type mismatch error: Expected right side to be of type integer.");
-                                        for (_key, val) in index.range((Excluded(val), Unbounded)) {
-                                            indexes.push(*val);
+                        Operator::Binary(bop) => {
+                            match bop {
+                                Binary::Eq => {
+                                    match &col.index.get_idx_data(&where_expr.right) {
+                                        Ok(v) => {
+                                            let matched_indexes = match v {
+                                                Some(idx) => vec![**idx],
+                                                None => vec![],
+                                            };
+                                            data =
+                                                self.select_data(&sq.projection, &matched_indexes);
+                                        }
+                                        Err(e) => {
+                                            println!("Error while trying to retrieve value from index: {}", e);
                                         }
                                     }
-                                    ColumnIndex::Str(index) => {
-                                        let val = (&(where_expr.right)).to_string();
-                                        for (_key, val) in index.range((Excluded(val), Unbounded)) {
-                                            indexes.push(*val);
+                                }
+                                Binary::Gt => {
+                                    match &col
+                                        .index
+                                        .get_idx_data_by_range(&where_expr.right, Binary::Gt)
+                                    {
+                                        Ok(indexes) => {
+                                            data = self.select_data(&sq.projection, indexes);
                                         }
-                                    }
-                                    ColumnIndex::Bool(index) => {
-                                        let val = &(where_expr.right).parse::<bool>().expect("Type mismatch error: Expected right side to be of type boolean.");
-                                        for (_key, val) in index.range((Excluded(val), Unbounded)) {
-                                            indexes.push(*val);
+                                        Err(e) => {
+                                            println!("Error while trying to retrieve value from index: {}", e);
                                         }
-                                    }
-                                    ColumnIndex::None => {
-                                        self.execute_select_query_without_index(&sq)
                                     }
                                 }
-
-                                data = self.select_data(&sq.projection, &indexes);
+                                _ => {}
                             }
-                            _ => {}
-                        },
+                        }
                         _ => {}
                     }
                 } else {
