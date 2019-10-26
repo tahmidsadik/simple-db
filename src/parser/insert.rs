@@ -9,22 +9,8 @@ pub struct InsertQuery {
     pub values: Vec<Vec<String>>,
 }
 
-// impl InsertQuery {
-//     fn new(table_name: String, columns: Vec<String>, values: Vec<Vec<String>>) -> InsertQuery {
-//         InsertQuery {
-//             table_name,
-//             columns,
-//             values,
-//         }
-//     }
-// }
-
-impl FromStr for InsertQuery {
-    type Err = String;
-    fn from_str(query: &str) -> Result<Self, Self::Err> {
-        let dialect = MySqlDialect {};
-        let statement = &Parser::parse_sql(&dialect, query.to_string()).unwrap()[0];
-
+impl InsertQuery {
+    pub fn new(statement: &Statement) -> Result<InsertQuery, String> {
         let mut tname: Option<String> = None;
         let mut columns: Vec<String> = vec![];
         let mut all_vals: Vec<Vec<String>> = vec![];

@@ -101,6 +101,34 @@ impl ColumnData {
         }
     }
 
+    fn get_serialized_col_data_by_index(&self, indices: &Vec<usize>) -> Vec<String> {
+        let mut selected_data = vec![];
+        match self {
+            ColumnData::Int(cd) => {
+                for i in indices {
+                    selected_data.push((cd[*i]).to_string());
+                }
+            }
+            ColumnData::Float(cd) => {
+                for i in indices {
+                    selected_data.push((cd[*i]).to_string());
+                }
+            }
+            ColumnData::Str(cd) => {
+                for i in indices {
+                    selected_data.push(cd[*i].to_string());
+                }
+            }
+            ColumnData::Bool(cd) => {
+                for i in indices {
+                    selected_data.push(cd[*i].to_string());
+                }
+            }
+            ColumnData::None => panic!("Found None in columns"),
+        }
+        selected_data
+    }
+
     fn count(&self) -> usize {
         match self {
             ColumnData::Int(cd) => cd.len(),
@@ -197,8 +225,7 @@ pub struct Table {
 }
 
 impl Table {
-    pub fn new(cmd: String) -> Table {
-        let cq = CreateQuery::new(&cmd).unwrap();
+    pub fn new(cq: CreateQuery) -> Table {
         let table_name = cq.table_name;
         let columns = cq.columns;
 
@@ -358,12 +385,7 @@ impl Table {
         let mut data = vec![];
         for col in columns_to_fetch {
             let row = self.rows.get(col).unwrap();
-            let column = row.get_serialized_col_data();
-            let mut filtered_data = vec![];
-            for idx in indexes {
-                filtered_data.push(column[*idx].to_string());
-            }
-            data.push(filtered_data);
+            data.push(row.get_serialized_col_data_by_index(indexes));
         }
         return data;
     }

@@ -37,10 +37,7 @@ pub struct SelectQuery {
 }
 
 impl SelectQuery {
-    pub fn new(query: &str) -> Result<SelectQuery, String> {
-        let dialect = MySqlDialect {};
-        let statement = &Parser::parse_sql(&dialect, query.to_string()).unwrap()[0];
-
+    pub fn new(statement: &Statement) -> Result<SelectQuery, String> {
         let mut table_name: Option<String> = None;
         let mut projection: Vec<String> = vec![];
         let mut where_expressions: Vec<Expression> = vec![];

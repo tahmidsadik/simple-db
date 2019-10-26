@@ -1,4 +1,4 @@
-use sqlparser::ast::{ColumnOption, DataType, ObjectName, Statement::CreateTable};
+use sqlparser::ast::{ColumnOption, DataType, ObjectName, Statement};
 use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::Parser;
 
@@ -17,12 +17,9 @@ pub struct CreateQuery {
 }
 
 impl CreateQuery {
-    pub fn new(query: &str) -> Result<CreateQuery, String> {
-        let dialect = MySqlDialect {};
-        let statement = &Parser::parse_sql(&dialect, query.to_string()).unwrap()[0];
-
+    pub fn new(statement: &Statement) -> Result<CreateQuery, String> {
         match statement {
-            CreateTable {
+            Statement::CreateTable {
                 name,
                 columns,
                 constraints: constraints,
@@ -48,9 +45,11 @@ impl CreateQuery {
                         DataType::Double => "float",
                         DataType::Decimal(_precision1, _precision2) => "float",
                         DataType::Custom(ObjectName(custom_type)) => {
+                            println!("custom type = {:?}", custom_type);
                             match custom_type[0].as_ref() {
                                 "string" => "string",
                                 "tinyint" => "int",
+                                "tinyint(1)" => "int",
                                 "datetime" => "string",
                                 _ => "invalid",
                             }
