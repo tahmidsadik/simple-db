@@ -515,56 +515,69 @@ impl Table {
 }
 
 #[cfg(test)]
+use sqlparser::ast::Statement;
+use sqlparser::dialect::MySqlDialect;
+use sqlparser::parser::Parser;
+
 mod tests {
     use super::*;
     #[test]
     fn tests_creating_a_table() {
         let command =
             String::from("CREATE TABLE users (id int, name string, bounty float, unknown unknown)");
-        let table = Table::new(command);
+        let dialect = MySqlDialect {};
+        let statement = &Parser::parse_sql(&dialect, command.to_string()).unwrap()[0];
+        if let Statement::CreateTable { .. } = statement {
+            let cq = CreateQuery::new(statement).unwrap();
+            let table = Table::new(cq);
+            let expected_column_names = vec![
+                "id".to_string(),
+                "name".to_string(),
+                "bounty".to_string(),
+                "unknown".to_string(), ];
+            let expected_column_types = vec![
+                "Int".to_string(),
+                "Str".to_string(),
+                "Float".to_string(),
+                "Invalid".to_string(),
+            ];
 
-        let expected_column_names = vec![
-            "id".to_string(),
-            "name".to_string(),
-            "bounty".to_string(),
-            "unknown".to_string(),
-        ];
-        let expected_column_types = vec![
-            "Int".to_string(),
-            "Str".to_string(),
-            "Float".to_string(),
-            "Invalid".to_string(),
-        ];
+            let column_names = table
+                .columns
+                .iter()
+                .map(|c| c.name.to_string())
+                .collect::<Vec<String>>();
 
-        let column_names = table
-            .columns
-            .iter()
-            .map(|c| c.name.to_string())
-            .collect::<Vec<String>>();
+            let column_types = table
+                .columns
+                .iter()
+                .map(|c| c.datatype.to_string())
+                .collect::<Vec<String>>();
 
-        let column_types = table
-            .columns
-            .iter()
-            .map(|c| c.datatype.to_string())
-            .collect::<Vec<String>>();
-
-        assert_eq!(table.name, "users");
-        assert_eq!(column_names, expected_column_names);
-        assert_eq!(column_types, expected_column_types);
+            assert_eq!(table.name, "users");
+            assert_eq!(column_names, expected_column_names);
+            assert_eq!(column_types, expected_column_types);
+        }
     }
 
     #[test]
     fn tests_unique_constraint_violation_on_primary_key() {
         let command = String::from("CREATE TABLE users (id int PRIMARY KEY, name string)");
-        let mut table = Table::new(command);
-        let cols = vec!["id".to_string(), "name".to_string()];
-        let val = vec!["1".to_string(), "tahmid".to_string()];
-        table.does_violate_unique_constraint(&cols, &val).unwrap();
-        table.insert_row(&cols, &vec![val.clone()]);
-        assert_eq!(
-            table.does_violate_unique_constraint(&cols, &val).is_err(),
-            true
-        );
+
+        let dialect = MySqlDialect {};
+        let statement = &Parser::parse_sql(&dialect, command.to_string()).unwrap()[0];
+        if let Statement::CreateTable { .. } = statement {
+            let cq = CreateQuery::new(statement).unwrap();
+            let mut table = Table::new(cq);
+            let cols = vec!["id".to_string(), "name".to_string()];
+            let val = vec!["1".to_string(), "tahmid".to_string()];
+            table.does_violate_unique_constraint(&cols, &val).unwrap();
+            table.insert_row(&cols, &vec![val.clone()]);
+            assert_eq!(
+                table.does_violate_unique_constraint(&cols, &val).is_err(),
+                true
+            );
+        }
     }
 }
 
