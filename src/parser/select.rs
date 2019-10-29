@@ -3,8 +3,6 @@ use sqlparser::ast::{
     SelectItem::{ExprWithAlias, QualifiedWildcard, UnnamedExpr, Wildcard},
     SetExpr, Statement, TableFactor, Value,
 };
-use sqlparser::dialect::MySqlDialect;
-use sqlparser::parser::Parser;
 
 #[derive(Debug, PartialEq)]
 pub enum Binary {

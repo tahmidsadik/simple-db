@@ -158,8 +158,8 @@ fn process_command(query: String, db: &mut Database) {
                     Err(err) => println!("Error while trying to parse insert statement: {}", err),
                 }
             }
-            Statement::Query(q) => {
-                let mut select_query = SelectQuery::new(&s);
+            Statement::Query(_q) => {
+                let select_query = SelectQuery::new(&s);
                 match select_query {
                     Ok(mut sq) => match db.table_exists((&sq.from).to_string()) {
                         true => {

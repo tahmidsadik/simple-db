@@ -7,7 +7,7 @@ use std::result::Result;
 
 use crate::parser::{
     create::CreateQuery,
-    select::{Binary, Operator, SelectQuery},
+    select::{Binary, Expression, Operator, SelectQuery},
 };
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -127,6 +127,132 @@ impl ColumnData {
             ColumnData::None => panic!("Found None in columns"),
         }
         selected_data
+    }
+
+    fn get_serialized_col_data_by_scanning(&self, expr: &Expression) -> Vec<usize> {
+        let search_term = (&expr.right).to_string();
+        let mut scanned_vals = vec![];
+        match &expr.op {
+            Operator::Binary(binary_op) => match binary_op {
+                Binary::Eq => match self {
+                    ColumnData::Int(cd) => {
+                        let search_term = search_term.parse::<i32>().unwrap();
+
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i == search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::Float(cd) => {
+                        let search_term = search_term.parse::<f32>().unwrap();
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i == search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::Str(cd) => {
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i == search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::Bool(cd) => {
+                        let search_term = search_term.parse::<bool>().unwrap();
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i == search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::None => panic!("Found None in columns"),
+                },
+                Binary::Gt => match self {
+                    ColumnData::Int(cd) => {
+                        let search_term = search_term.parse::<i32>().unwrap();
+
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i > search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::Float(cd) => {
+                        let search_term = search_term.parse::<f32>().unwrap();
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i > search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::Str(cd) => {
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i > search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::Bool(cd) => {
+                        let search_term = search_term.parse::<bool>().unwrap();
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i > search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::None => panic!("Found None in columns"),
+                },
+                Binary::Lt => match self {
+                    ColumnData::Int(cd) => {
+                        let search_term = search_term.parse::<i32>().unwrap();
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i < search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::Float(cd) => {
+                        let mut scanned_vals = vec![];
+                        let search_term = search_term.parse::<f32>().unwrap();
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i < search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::Str(cd) => {
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i < search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::Bool(cd) => {
+                        let search_term = search_term.parse::<bool>().unwrap();
+                        for (idx, i) in cd.iter().enumerate() {
+                            if *i < search_term {
+                                scanned_vals.push(idx);
+                            }
+                        }
+                        return scanned_vals;
+                    }
+                    ColumnData::None => panic!("Found None in columns"),
+                },
+            },
+        }
     }
 
     fn count(&self) -> usize {
@@ -390,8 +516,38 @@ impl Table {
         return data;
     }
 
-    fn execute_select_query_without_index(&self, _sq: &SelectQuery) {
-        println!("Cannot execute select query without index.");
+    fn execute_select_query_without_index(&self, sq: &SelectQuery) -> Vec<Vec<String>> {
+        let expr = sq.where_expressions.first();
+        match expr {
+            Some(where_expr) => {
+                let col = self.get_column(where_expr.left.to_string());
+                let row = self.rows.get(&col.name).unwrap();
+
+                let indices = row.get_serialized_col_data_by_scanning(&where_expr);
+
+                let projected_data = self
+                    .rows
+                    .iter()
+                    .filter(|c| {
+                        let (key, _val) = c;
+                        match sq.projection.iter().find(|&p| *p == key.to_string()) {
+                            Some(_s) => true,
+                            None => false,
+                        }
+                    })
+                    .map(|c| {
+                        let (_key, val) = c;
+                        return val.get_serialized_col_data_by_index(&indices);
+                    })
+                    .collect::<Vec<Vec<String>>>();
+
+                return projected_data;
+            }
+
+            None => {
+                panic!("Invalid where expression given");
+            }
+        }
     }
 
     pub fn execute_select_query(&self, sq: &SelectQuery) {
@@ -439,7 +595,7 @@ impl Table {
                         }
                     }
                 } else {
-                    self.execute_select_query_without_index(&sq);
+                    data = self.execute_select_query_without_index(&sq);
                 }
             }
             None => {
@@ -515,12 +671,10 @@ impl Table {
 }
 
 #[cfg(test)]
-use sqlparser::ast::Statement;
-use sqlparser::dialect::MySqlDialect;
-use sqlparser::parser::Parser;
 
 mod tests {
     use super::*;
+    use sqlparser::{ast::Statement, dialect::MySqlDialect, parser::Parser};
     #[test]
     fn tests_creating_a_table() {
         let command =
@@ -534,7 +688,8 @@ mod tests {
                 "id".to_string(),
                 "name".to_string(),
                 "bounty".to_string(),
-                "unknown".to_string(), ];
+                "unknown".to_string(),
+            ];
             let expected_column_types = vec![
                 "Int".to_string(),
                 "Str".to_string(),

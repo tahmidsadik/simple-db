@@ -1,6 +1,4 @@
 use sqlparser::ast::{ColumnOption, DataType, ObjectName, Statement};
-use sqlparser::dialect::MySqlDialect;
-use sqlparser::parser::Parser;
 
 #[derive(PartialEq, Debug)]
 pub struct ParsedColumn {
@@ -22,7 +20,7 @@ impl CreateQuery {
             Statement::CreateTable {
                 name,
                 columns,
-                constraints: constraints,
+                constraints: _constraints,
                 with_options: _with_options,
                 external: _external,
                 file_format: _file_format,
@@ -77,7 +75,7 @@ impl CreateQuery {
                 }
                 //                TODO: Handle constraints,
                 //    Unique, Primary Key, Nullable, Default value etc.
-                for constraint in constraints {
+                for constraint in _constraints {
                     println!("{:?}", constraint);
                 }
                 return Ok(CreateQuery {

@@ -1,7 +1,4 @@
 use sqlparser::ast::{Expr, Query, SetExpr, Statement, Value, Values};
-use sqlparser::dialect::MySqlDialect;
-use sqlparser::parser::Parser;
-use std::str::FromStr;
 
 pub struct InsertQuery {
     pub table_name: String,
