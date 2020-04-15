@@ -525,20 +525,15 @@ impl Table {
 
                 let indices = row.get_serialized_col_data_by_scanning(&where_expr);
 
-                let projected_data = self
-                    .rows
+                let projected_data = sq
+                    .projection
                     .iter()
-                    .filter(|c| {
-                        let (key, _val) = c;
-                        match sq.projection.iter().find(|&p| *p == key.to_string()) {
-                            Some(_s) => true,
-                            None => false,
-                        }
+                    .map(|col_name| {
+                        self.rows
+                            .get(&col_name.to_string())
+                            .expect("The searched column doestn't exist")
                     })
-                    .map(|c| {
-                        let (_key, val) = c;
-                        return val.get_serialized_col_data_by_index(&indices);
-                    })
+                    .map(|col_data| col_data.get_serialized_col_data_by_index(&indices))
                     .collect::<Vec<Vec<String>>>();
 
                 return projected_data;
@@ -557,6 +552,8 @@ impl Table {
         match expr {
             Some(where_expr) => {
                 let col = self.get_column(where_expr.left.to_string());
+                // println!("Fetched column = {}", col.name);
+                // println!("Is column indexed = {} ", col.is_indexed);
 
                 if col.is_indexed {
                     match &where_expr.op {
@@ -595,10 +592,12 @@ impl Table {
                         }
                     }
                 } else {
+                    println!("Executing select expression wihtout index");
                     data = self.execute_select_query_without_index(&sq);
                 }
             }
             None => {
+                println!("In none block");
                 for col in &sq.projection {
                     let row = self.rows.get(col).unwrap();
                     let column = row.get_serialized_col_data();
@@ -620,7 +619,6 @@ impl Table {
         }
 
         table.printstd();
-        println!();
     }
 
     pub fn print_table_data(&self) {
