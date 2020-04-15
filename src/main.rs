@@ -87,7 +87,7 @@ fn handle_meta_command(cmd: MetaCommand, db: &mut Database) {
                 println!("No tables found");
             }
             for table in &db.tables {
-;                table.print_table();
+                table.print_table();
             }
         }
         MetaCommand::PrintData => {
@@ -188,6 +188,7 @@ fn process_command(query: String, db: &mut Database) {
                                 }
                             }
 
+                            println!("sq = {:?}", &sq);
                             db_table.execute_select_query(&sq);
                         }
                         false => {
