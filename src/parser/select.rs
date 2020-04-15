@@ -63,17 +63,14 @@ impl SelectQuery {
                             Wildcard => {
                                 projection.push("*".to_string());
                             }
-                            ExprWithAlias { expr, alias } => {
-                                println!("expression = {} alias = {}", expr, alias);
-                                match expr {
-                                    Expr::Identifier(i) => {
-                                        projection.push(i.to_string());
-                                    }
-                                    _ => {
-                                        println!("Detected expression with alias. Cannot parse expression with alias.");
-                                    }
+                            ExprWithAlias { expr, alias } => match expr {
+                                Expr::Identifier(i) => {
+                                    projection.push(i.to_string());
                                 }
-                            }
+                                _ => {
+                                    println!("Detected expression with alias. Cannot parse expression with alias.");
+                                }
+                            },
                         }
                     }
 
@@ -88,7 +85,7 @@ impl SelectQuery {
                                 table_name = Some(name.to_string());
                                 match alias {
                                     Some(alias) => println!("alias = {}", alias),
-                                    None => println!("No alias"),
+                                    None => println!("No table alias"),
                                 }
                             }
                             _ => println!("Nested join or derived tables"),
@@ -97,7 +94,7 @@ impl SelectQuery {
 
                     match &(*select).selection {
                         Some(where_expression) => {
-                            println!("{:?}", where_expression);
+                            println!("where expression in select.rs = {:?}", where_expression);
                             match where_expression {
                                 Expr::BinaryOp { left, op, right } => {
                                     if let Expr::Identifier(col_name) = &(**left) {
@@ -130,6 +127,93 @@ impl SelectQuery {
                                                     }
                                                 };
                                             }
+
+                                            if let Value::NationalStringLiteral(n) = v {
+                                                match op {
+                                                    sqlparser::ast::BinaryOperator::Eq => {
+                                                        where_expressions.push(Expression {
+                                                            left: col_name.to_string(),
+                                                            right: n.to_string(),
+                                                            op: Operator::Binary(Binary::Eq),
+                                                        });
+                                                    }
+                                                    sqlparser::ast::BinaryOperator::Gt => {
+                                                        where_expressions.push(Expression {
+                                                            left: col_name.to_string(),
+                                                            right: n.to_string(),
+                                                            op: Operator::Binary(Binary::Gt),
+                                                        });
+                                                    }
+                                                    sqlparser::ast::BinaryOperator::Lt => {
+                                                        where_expressions.push(Expression {
+                                                            left: col_name.to_string(),
+                                                            right: n.to_string(),
+                                                            op: Operator::Binary(Binary::Lt),
+                                                        });
+                                                    }
+                                                    _ => {
+                                                        panic!("cannot parse select query");
+                                                    }
+                                                };
+                                            }
+
+                                            if let Value::SingleQuotedString(n) = v {
+                                                match op {
+                                                    sqlparser::ast::BinaryOperator::Eq => {
+                                                        where_expressions.push(Expression {
+                                                            left: col_name.to_string(),
+                                                            right: n.to_string(),
+                                                            op: Operator::Binary(Binary::Eq),
+                                                        });
+                                                    }
+                                                    sqlparser::ast::BinaryOperator::Gt => {
+                                                        where_expressions.push(Expression {
+                                                            left: col_name.to_string(),
+                                                            right: n.to_string(),
+                                                            op: Operator::Binary(Binary::Gt),
+                                                        });
+                                                    }
+                                                    sqlparser::ast::BinaryOperator::Lt => {
+                                                        where_expressions.push(Expression {
+                                                            left: col_name.to_string(),
+                                                            right: n.to_string(),
+                                                            op: Operator::Binary(Binary::Lt),
+                                                        });
+                                                    }
+                                                    _ => {
+                                                        panic!("cannot parse select query");
+                                                    }
+                                                };
+                                            }
+                                        }
+
+                                        if let Expr::Identifier(v) = &(**right) {
+                                            match op {
+                                                sqlparser::ast::BinaryOperator::Eq => {
+                                                    where_expressions.push(Expression {
+                                                        left: col_name.to_string(),
+                                                        right: v.to_string(),
+                                                        op: Operator::Binary(Binary::Eq),
+                                                    });
+                                                }
+                                                sqlparser::ast::BinaryOperator::Gt => {
+                                                    where_expressions.push(Expression {
+                                                        left: col_name.to_string(),
+                                                        right: v.to_string(),
+                                                        op: Operator::Binary(Binary::Gt),
+                                                    });
+                                                }
+                                                sqlparser::ast::BinaryOperator::Lt => {
+                                                    where_expressions.push(Expression {
+                                                        left: col_name.to_string(),
+                                                        right: v.to_string(),
+                                                        op: Operator::Binary(Binary::Lt),
+                                                    });
+                                                }
+                                                _ => {
+                                                    panic!("cannot parse select query");
+                                                }
+                                            };
                                         }
                                     };
                                 }
